@@ -27,12 +27,12 @@ import numpy as np
 from munch import Munch
 
 from tfe.detector import Detection
-from tfe.ops import AppleRGB as colors
+# from tfe.ops import AppleRGB as colors
+from mon.coreimage import AppleRGB as colors
 from tfe.utils import data_dir
 from tfe.utils import is_json_file
 from tfe.utils import parse_config_from_json
 from tfe.utils import printe
-
 
 # MARK: - ROI (Region of Interest)
 
@@ -136,13 +136,27 @@ class ROI(object):
 		# Convert from [n, 2] to [n, 1, 2], new format of opencv
 		# points = np.array([[point] for point in self.points])
 		# print(type(points))
-		# print(points)
+		# print("**************************")
+		# print(self.points)
+		# print(self.points.shape)
 		# print((bbox_xyxy[0], bbox_xyxy[1]))
+		# print(compute_distance)
+		# pts = self.points.reshape((-1, 1, 2))
+		# print(pts)
+		# print(type(pts))
+		# print(pts.shape)
+		# print(type(bbox_xyxy[0]))
+		# print(type(bbox_xyxy[1]))
+		# print("**************************")
 
-		tl = cv2.pointPolygonTest(self.points, (bbox_xyxy[0], bbox_xyxy[1]), compute_distance)
-		tr = cv2.pointPolygonTest(self.points, (bbox_xyxy[2], bbox_xyxy[1]), compute_distance)
-		br = cv2.pointPolygonTest(self.points, (bbox_xyxy[2], bbox_xyxy[3]), compute_distance)
-		bl = cv2.pointPolygonTest(self.points, (bbox_xyxy[0], bbox_xyxy[3]), compute_distance)
+		# NOTE:
+		# opencv 4.6.0 need to convert from [n, 2] to [n, 1, 2] for pts
+		# and 'numpy.int32' is not acceptable, only 'int'
+		pts = self.points.reshape((-1, 1, 2))
+		tl = cv2.pointPolygonTest(pts, (int(bbox_xyxy[0]), int(bbox_xyxy[1])), compute_distance)
+		tr = cv2.pointPolygonTest(pts, (int(bbox_xyxy[2]), int(bbox_xyxy[1])), compute_distance)
+		br = cv2.pointPolygonTest(pts, (int(bbox_xyxy[2]), int(bbox_xyxy[3])), compute_distance)
+		bl = cv2.pointPolygonTest(pts, (int(bbox_xyxy[0]), int(bbox_xyxy[3])), compute_distance)
 		
 		if tl > 0 and tr > 0 and br > 0 and bl > 0:
 			return 1

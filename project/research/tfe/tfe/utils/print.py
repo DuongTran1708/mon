@@ -23,8 +23,7 @@
 # 1. The package (i.e, the .py filename) should be in the template:
 #    {tracker}_{track_motion_model}_{feature_used_to_track}
 # ==================================================================== #
-from sty import bg, ef, fg, rs
-from sty import RgbFg, Style
+# from sty import bg, ef, fg, rs
 
 
 # MARK: - Print
@@ -32,19 +31,19 @@ from sty import RgbFg, Style
 def prints(s: str):
     """Print normal status.
     """
-    s = fg.li_green + s + fg.rs
+    # s = fg.li_green + s + fg.rs
     print(s)
 
 
 def printw(s: str):
     """Print warning.
     """
-    s = fg.li_yellow + s + fg.rs
+    # s = fg.li_yellow + s + fg.rs
     print(s)
 
 
 def printe(s: str):
-    """PrintError.
+    """Print error.
     """
-    s = fg.li_red + s + fg.rs
+    # s = fg.li_red + s + fg.rs
     print(s)

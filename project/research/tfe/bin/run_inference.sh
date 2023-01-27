@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Run each camera
-python main.py  \
-   --dataset aicity2021_final  \
-   --config cam_1.yaml  \
-   --write_video True
+#python main.py  \
+#   --dataset aicity2021_final  \
+#   --config cam_1.yaml  \
+#   --write_video True
 
 # Run all cameras
 #python main_all.py  \
@@ -12,9 +12,10 @@ python main.py  \
 #   --write_video True
 
 # Run each camera with multi thread
-#python main_multithread.py  \
-#    --dataset aicity2021_final \
-#    --config cam_1.yaml
+export PYTHONPATH=$PYTHONPATH:"/media/sugarubuntu/DataSKKU3/3_Workspace/traffic_surveillance_system/mon/src"
+python main_multithread.py  \
+    --dataset aicity2021_final \
+    --config cam_1.yaml
 
 # Run each camera with multi thread
 #python main_all_multithread.py  \

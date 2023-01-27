@@ -15,13 +15,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 # ==================================================================== #
-from ordered_enum import OrderedEnum
+from enum import Enum
 
 
 # MARK: - RGB Color Table
 
 
-class BasicRGB(OrderedEnum):
+class BasicRGB(Enum):
 	BLACK   = (0  , 0  , 0)
 	WHITE   = (255, 255, 255)
 	RED     = (255, 0  , 0)
@@ -44,7 +44,7 @@ class BasicRGB(OrderedEnum):
 		return [e.value for e in BasicRGB]
 
 
-class RGB(OrderedEnum):
+class RGB(Enum):
 	MAROON                  = (128, 0  , 0)
 	DARK_RED                = (139, 0  , 0)
 	BROWN                   = (165, 42 , 42)
@@ -190,7 +190,7 @@ class RGB(OrderedEnum):
 		return [e.value for e in RGB]
 
 
-class AppleRGB(OrderedEnum):
+class AppleRGB(Enum):
 	GRAY   = [128, 128, 128]
 	RED    = [255, 59 , 48]
 	GREEN  = [ 52, 199, 89]

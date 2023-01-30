@@ -8,11 +8,12 @@ from __future__ import annotations
 
 __all__ = [
     "LogitsType",
-    # Extend :mod:`mon.foundation.typing`
+    # Extend :mod:`mon.core.typing`
     "CallableType", "ConfigType", "DictType",  "Float1T", "Float2T", "Float3T",
     "Float4T", "Float5T", "Float6T", "FloatAnyT", "Floats", "ImageFormatType",
     "Int1T", "Int2T", "Int3T", "Int4T", "Int5T", "Int6T", "IntAnyT", "Ints",
-    "MemoryUnitType", "PathType", "PathsType", "Strs", "VideoFormatType",
+    "MemoryUnitType", "Number", "PathType", "PathsType", "Strs",
+    "VideoFormatType",
     # Extend :mod:`mon.coreimage.typing`
     "AppleRGBType", "BBoxFormatType", "BBoxFormatType", "BBoxType",
     "BasicRGBType", "BorderTypeType", "CFAType", "DistanceMetricType", "Image",
@@ -22,8 +23,8 @@ __all__ = [
     "CallbackType", "CallbacksType", "ClassLabelsType", "EpochOutput",
     "LRSchedulerType", "LRSchedulersType", "LoggerType", "LoggersType",
     "LossType", "LossesType", "MetricType", "MetricsType", "ModelPhaseType",
-    "OptimizerType", "OptimizersType", "PretrainedType", "ReductionType",
-    "StepOutput", "TransformType", "TransformsType",
+    "OptimizerType", "OptimizersType", "ReductionType", "StepOutput",
+    "TransformType", "TransformsType", "WeightsType",
 ]
 
 from typing import Sequence, TypeAlias

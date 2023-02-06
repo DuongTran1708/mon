@@ -8,13 +8,12 @@ __pycache__/
 *.so
 *~
 
+*.lock
 *.pt
 *.pth
-
 /.idea/
 /.sync/
 /data/
 /project/*/data
-/project/**/runs
+/project/*/run
 /src/archive/
-/weight/

@@ -32,7 +32,7 @@ def visualize_bbox_coco(args: munch.Munch):
     image_files = list(image_dir.rglob("*"))
     image_files = [f for f in image_files if f.is_image_file()]
     image_files = sorted(image_files)
-    with mon.rich.progress_bar() as pbar:
+    with mon.rich.get_progress_bar() as pbar:
         for i in pbar.track(
             sequence    = range(len(image_files)),
             total       = len(image_files),
@@ -48,7 +48,7 @@ def visualize_bbox_coco(args: munch.Munch):
                 b = [list(map(float, x[1:])) for x in l]
                 b = np.array(b)
                 b = torch.from_numpy(b)
-                b = mon.box_xywh_to_xyxy(b)
+                b = mon.bbox_xywh_to_xyxy(b)
                 b = b.numpy()
                 
                 org        = (50, 50)
@@ -86,7 +86,7 @@ def visualize_bbox_voc(args: munch.Munch):
     image_files = list(image_dir.rglob("*"))
     image_files = [f for f in image_files if f.is_image_file()]
     image_files = sorted(image_files)
-    with mon.rich.progress_bar() as pbar:
+    with mon.rich.get_progress_bar() as pbar:
         for i in pbar.track(
             sequence    = range(len(image_files)),
             total       = len(image_files),
@@ -137,7 +137,7 @@ def visualize_bbox_yolo(args: munch.Munch):
     image_files = list(image_dir.rglob("*"))
     image_files = [f for f in image_files if f.is_image_file()]
     image_files = sorted(image_files)
-    with mon.rich.progress_bar() as pbar:
+    with mon.rich.get_progress_bar() as pbar:
         for i in pbar.track(
             sequence    = range(len(image_files)),
             total       = len(image_files),
@@ -152,7 +152,7 @@ def visualize_bbox_yolo(args: munch.Munch):
                 b = [list(map(float, x[1:])) for x in l]
                 b = np.array(b)
                 b = torch.from_numpy(b)
-                b = mon.box_cxcywh_norm_to_xyxy(b, height=h, width=w)
+                b = mon.bbox_cxcywhn_to_xyxy(b, height=h, width=w)
                 b = b.numpy()
                 
                 org        = (50, 50)
@@ -191,13 +191,13 @@ def parse_args():
         "--label",
         type    = str,
         default = mon.DATA_DIR / "a2i2-haze/train/detection/haze/labels",
-        help    = "Bounding box directory."
+        help    = "Bounding bbox directory."
     )
     parser.add_argument(
-        "--box-format",
+        "--bbox-format",
         type    = str,
         default = "yolo",
-        help    = "Bounding box format (i.e., xyxy, cxcywh, cxcywh_norm (yolo)."
+        help    = "Bounding bbox format (i.e., xyxy, cxcywh, cxcywhn (yolo)."
     )
     parser.add_argument(
         "--output",
@@ -213,7 +213,10 @@ def parse_args():
 if __name__ == "__main__":
     args = munch.Munch.fromDict(vars(parse_args()))
     assert args.box_format in [
-        "xyxy", "xywh", "cxcywh", "cxcywh_norm", "voc", "coco", "yolo",
+        "xyxy", "voc",
+        "xywh", "coco",
+        "cxcywh",
+        "cxcywhn", "yolo",
     ]
     if args.box_format in ["xyxy", "voc"]:
         visualize_bbox_voc(args=args)
@@ -221,7 +224,7 @@ if __name__ == "__main__":
         visualize_bbox_coco(args=args)
     elif args.box_format in ["cxcywh"]:
         pass
-    elif args.box_format in ["cxcywh_norm", "yolo"]:
+    elif args.box_format in ["cxcywhn", "yolo"]:
         visualize_bbox_yolo(args=args)
     
 # endregion

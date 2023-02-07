@@ -13,7 +13,10 @@ __all__ = [
 	"DETECTORS",
 	"IDENTIFICATIONS",
 
-	"FILE_HANDLERS"
+	"FILE_HANDLERS",
+
+	"AUGMENTS",
+	"TRANSFORMS"
 ]
 
 # MARK: - Modules
@@ -25,3 +28,8 @@ IDENTIFICATIONS = Factory(name="identifications")
 # MARK: - File
 
 FILE_HANDLERS   = Factory(name="file_handler")
+
+# MARK: - Augment
+
+AUGMENTS        = Factory(name="augments")
+TRANSFORMS      = Factory(name="transforms")

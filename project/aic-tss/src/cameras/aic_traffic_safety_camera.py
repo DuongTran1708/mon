@@ -21,9 +21,9 @@ from core.io.filedir import is_basename
 from core.io.filedir import is_json_file
 from core.io.filedir import is_stem
 from mon.coreimage.constant import AppleRGB
-from torchkit.core.vision import FrameLoader
-from torchkit.core.vision import FrameWriter
-from torchkit.core.vision import is_video_file
+from core.io import FrameLoader
+from core.io import FrameWriter
+from core.io import is_video_file
 from core.factory import CAMERAS
 from core.factory import DETECTORS
 from detectors import BaseDetector

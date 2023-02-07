@@ -16,10 +16,10 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from torchkit.core.data import ClassLabels
-from torchkit.core.file import is_basename
-from torchkit.core.file import is_json_file
-from torchkit.core.file import is_stem
+from core.data import ClassLabels
+from core.io.filedir import is_basename
+from core.io.filedir import is_json_file
+from core.io.filedir import is_stem
 from mon.coreimage.constant import AppleRGB
 from torchkit.core.vision import FrameLoader
 from torchkit.core.vision import FrameWriter

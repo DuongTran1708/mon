@@ -11,7 +11,7 @@ from typing import Union
 
 from munch import Munch
 
-from torchkit.core.file import load
+from core.io.file import load
 
 
 # MARK: - Directories

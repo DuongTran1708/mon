@@ -26,7 +26,7 @@ __all__ = [
 
 
 # MARK: - BaseDetector
-from torchkit.core.vision import to_tensor
+from core.utils.image import to_tensor
 
 
 # noinspection PyShadowingBuiltins

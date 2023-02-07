@@ -20,25 +20,22 @@ from torchkit.core.data import ClassLabels
 from torchkit.core.file import is_basename
 from torchkit.core.file import is_json_file
 from torchkit.core.file import is_stem
-from torchkit.core.type import is_list_of
-from torchkit.core.vision import AppleRGB
+from mon.coreimage.constant import AppleRGB
 from torchkit.core.vision import FrameLoader
 from torchkit.core.vision import FrameWriter
 from torchkit.core.vision import is_video_file
-from projects.tss.src.builder import CAMERAS
-from projects.tss.src.builder import DETECTORS
-from projects.tss.src.detectors import BaseDetector
-from projects.tss.src.io import AICCountingWriter
-from projects.tss.src.trackers import BaseTracker
-from projects.tss.utils import data_dir
+from core.factory import CAMERAS
+from core.factory import DETECTORS
+from detectors import BaseDetector
+from configuration import data_dir
 from .base import BaseCamera
 
 
 # MARK: - AICVehicleCountingCamera
 
 # noinspection PyAttributeOutsideInit
-@CAMERAS.register(name="aic_vehicle_counting_camera")
-class AICVehicleCountingCamera(BaseCamera):
+@CAMERAS.register(name="aic_traffic_safety_camera")
+class AICTrafficSafetyCamera(BaseCamera):
 	"""AIC Counting Camera implements the functions for Multi-Class
 	Multi-Movement Vehicle Counting (MMVC).
 
@@ -181,7 +178,6 @@ class AICVehicleCountingCamera(BaseCamera):
 		"""Initialize dirs."""
 		self.root_dir    = os.path.join(data_dir, self.dataset)
 		self.configs_dir = os.path.join(self.root_dir, "configs")
-		self.rmois_dir   = os.path.join(self.root_dir, "rmois")
 		self.outputs_dir = os.path.join(self.root_dir, "outputs")
 		self.video_dir   = os.path.join(self.root_dir, self.subset)
 

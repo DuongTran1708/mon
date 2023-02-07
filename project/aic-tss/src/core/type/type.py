@@ -123,12 +123,12 @@ Transform_  = Union[dict, Callable]
 Transforms_ = Union[str, nn.Sequential, Transform_, list[Transform_]]
 
 TrainDataLoaders = Union[
-    DataLoader,
-    Sequence[DataLoader],
-    Sequence[Sequence[DataLoader]],
-    Sequence[dict[str, DataLoader]],
-    dict[str, DataLoader],
-    dict[str, dict[str, DataLoader]],
-    dict[str, Sequence[DataLoader]],
+	DataLoader,
+	Sequence[DataLoader],
+	Sequence[Sequence[DataLoader]],
+	Sequence[dict[str, DataLoader]],
+	dict[str, DataLoader],
+	dict[str, dict[str, DataLoader]],
+	dict[str, Sequence[DataLoader]],
 ]
 EvalDataLoaders = Union[DataLoader, Sequence[DataLoader]]

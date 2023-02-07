@@ -14,9 +14,9 @@ import cv2
 import numpy as np
 from munch import Munch
 
-from torchkit.core.file import load
-from torchkit.core.utils import console
-from torchkit.core.utils import print_table
+from core.file import load
+from core.utils import console
+from core.utils import print_table
 
 __all__ = [
 	"ClassLabels",

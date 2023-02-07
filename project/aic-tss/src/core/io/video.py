@@ -13,11 +13,11 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from torchkit.core.file import create_dirs
-from torchkit.core.type import Arrays
-from torchkit.core.type import Dim3
-from torchkit.core.vision.utils.image import is_channel_first
-from torchkit.core.vision.utils.image import to_channel_last
+from core.io import create_dirs
+from core.type import Arrays
+from core.type import Dim3
+from core.utils import is_channel_first
+from core.utils import to_channel_last
 from .format import VideoFormat
 
 __all__ = [

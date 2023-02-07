@@ -25,16 +25,14 @@ from PIL import ExifTags
 from PIL import Image
 from torch import Tensor
 
-from torchkit.core.file import create_dirs
+from core.io import create_dirs
 from core.type import Arrays
-from torchkit.core.vision.enhance.normalize import denormalize_naive
-from torchkit.core.vision.utils.backend import \
-	interpolation_vision_backend_from_int
-from torchkit.core.vision.utils.backend import \
-	interpolation_vision_backend_from_str
-from torchkit.core.vision.utils.backend import VisionBackend
-from torchkit.core.vision.utils.image import is_channel_first
-from torchkit.core.vision.utils.image import to_channel_last
+from core.enhance import denormalize_naive
+from core.utils import interpolation_vision_backend_from_int
+from core.utils import interpolation_vision_backend_from_str
+from core.utils import VisionBackend
+from core.utils import is_channel_first
+from core.utils import to_channel_last
 from .format import ImageFormat
 
 __all__ = [

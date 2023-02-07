@@ -12,8 +12,8 @@ from typing import Union
 
 from munch import Munch
 
-from torchkit.core.type import is_list_of
-from torchkit.core.utils import error_console
+from core.type import is_list_of
+from core.utils import error_console
 from .registry import Registry
 
 __all__ = [

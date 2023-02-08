@@ -19,6 +19,7 @@ from cameras import AICTrafficSafetyCamera
 
 from configuration import (
 	data_dir,
+	config_dir,
 	load_config
 )
 
@@ -32,6 +33,10 @@ parser.add_argument(
 	"--config", default="c041.yaml",
 	help="Config file for each camera. Final path to the config file "
 		 "is: tss/data/[dataset]/configs/[config]/"
+)
+parser.add_argument(
+	"--dataset", default="aic23_trafficsafety",
+	help="Dataset to run on."
 )
 parser.add_argument(
 	"--detection", action='store_true', help="Should run detection."
@@ -52,7 +57,11 @@ def main():
 
 	# NOTE: Parse camera config
 	args        = parser.parse_args()
-	config_path = os.path.join(data_dir, args.dataset, "configs", args.config)
+	config_path = os.path.join(config_dir, args.config)
+
+	# DEBUG:
+	print(config_path)
+
 	camera_cfg  = load_config(config_path)
 
 	# DEBUG: print camera config

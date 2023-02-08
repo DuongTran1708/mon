@@ -7,6 +7,10 @@ yaml, txt, json, ...
 
 from __future__ import annotations
 
+from abc import ABCMeta
+from abc import abstractmethod
+import pickle
+import yaml
 from pathlib import Path
 from typing import Any
 from typing import Optional
@@ -17,9 +21,10 @@ from core.factory.builder import FILE_HANDLERS
 
 __all__ = [
 	"dump",
-	"load"
+	"load",
+	"BaseFileHandler",
+	"PickleHandler"
 ]
-
 
 # MARK: - Load
 
@@ -106,3 +111,132 @@ def dump(
 		handler.dump_to_fileobj(obj, path, **kwargs)
 	else:
 		raise TypeError("`file` must be a filename str or a file-object.")
+
+
+# MARK: - BaseFileHandler
+
+class BaseFileHandler(metaclass=ABCMeta):
+	"""Base file handler implements the template methods (i.e., skeleton) for
+	read and write data from/to different file formats.
+	"""
+
+	@abstractmethod
+	def load_from_fileobj(
+			self, path: Union[str, TextIO], **kwargs
+	) -> Optional[Union[str, dict]]:
+		"""Load the content from the given filepath or file-like object
+		(input stream).
+		"""
+		pass
+
+	@abstractmethod
+	def dump_to_fileobj(self, obj, path: Union[str, TextIO], **kwargs):
+		"""Dump data from the given obj to the filepath or file-like object.
+		"""
+		pass
+
+	@abstractmethod
+	def dump_to_str(self, obj, **kwargs) -> str:
+		"""Dump data from the given obj to string."""
+		pass
+
+	def load_from_file(
+			self, path: str, mode: str = "r", **kwargs
+	) -> Optional[Union[str, dict]]:
+		"""Load content from the given file."""
+		with open(path, mode) as f:
+			return self.load_from_fileobj(f, **kwargs)
+
+	def dump_to_file(self, obj, path: str, mode: str = "w", **kwargs):
+		"""Dump data from object to file.
+
+		Args:
+			obj:
+				Object.
+			path (str):
+				Filepath.
+			mode (str):
+				File opening mode.
+		"""
+		with open(path, mode) as f:
+			self.dump_to_fileobj(obj, f, **kwargs)
+
+
+# MARK: - PickleHandler
+
+@FILE_HANDLERS.register(name="pickle")
+@FILE_HANDLERS.register(name="pkl")
+class PickleHandler(BaseFileHandler):
+	"""Pickle file handler."""
+
+	def load_from_fileobj(
+			self, path: Union[str, TextIO], **kwargs
+	) -> Optional[Union[str, dict]]:
+		"""Load the content from the given filepath or file-like object
+		(input stream).
+		"""
+		return pickle.load(path, **kwargs)
+
+	def dump_to_fileobj(self, obj, path: Union[str, TextIO], **kwargs):
+		"""Dump data from the given obj to the filepath or file-like object.
+		"""
+		kwargs.setdefault("protocol", 2)
+		pickle.dump(obj, path, **kwargs)
+
+	def dump_to_str(self, obj, **kwargs) -> bytes:
+		""""Dump data from the given obj to string."""
+		kwargs.setdefault("protocol", 2)
+		return pickle.dumps(obj, **kwargs)
+
+	def load_from_file(
+			self, file: Union[str, Path], **kwargs
+	) -> Optional[Union[str, dict]]:
+		"""Load content from the given file."""
+		return super().load_from_file(file, mode="rb", **kwargs)
+
+	def dump_to_file(self, obj, path: Union[str, Path], **kwargs):
+		"""Dump data from object to file.
+
+		Args:
+			obj:
+				Object.
+			path (str, Path):
+				Filepath.
+		"""
+		super().dump_to_file(obj, path, mode="wb", **kwargs)
+
+# MARK: - YamlHandler
+
+try:
+	from yaml import CLoader as FullLoader, CDumper as Dumper
+except ImportError:
+	from yaml import FullLoader, Dumper
+
+__all__ = [
+	"YamlHandler"
+]
+
+@FILE_HANDLERS.register(name="yaml")
+@FILE_HANDLERS.register(name="yml")
+class YamlHandler(BaseFileHandler):
+	"""YAML file handler."""
+
+	def load_from_fileobj(
+			self, path: Union[str, TextIO], **kwargs
+	) -> Optional[Union[str, dict]]:
+		"""Load the content from the given filepath or file-like object
+		(input stream).
+		"""
+		kwargs.setdefault("Loader", FullLoader)
+		return yaml.load(path, **kwargs)
+
+	def dump_to_fileobj(self, obj, path: Union[str, TextIO], **kwargs):
+		"""Dump data from the given obj to the filepath or file-like object.
+		"""
+		kwargs.setdefault("Dumper", Dumper)
+		yaml.dump(obj, path, **kwargs)
+
+	def dump_to_str(self, obj, **kwargs) -> str:
+		"""Dump data from the given obj to string."""
+		kwargs.setdefault("Dumper", Dumper)
+		return yaml.dump(obj, **kwargs)

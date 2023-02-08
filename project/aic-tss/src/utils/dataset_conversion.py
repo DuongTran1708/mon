@@ -18,6 +18,7 @@ import cv2
 
 from classes_aic23_track5 import *
 
+
 # NOTE: SMALL UTILITIES -------------------------------------------------------
 def make_dir(path):
 	"""Make dir"""

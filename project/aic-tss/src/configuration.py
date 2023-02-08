@@ -17,19 +17,14 @@ from core.io.file import load
 # MARK: - Directories
 
 # NOTE: Inside tss
-tss_dir        = os.path.dirname(os.path.abspath(__file__))  # "workspaces/MLKit/projects/tss"
-src_dir        = os.path.join(tss_dir, "src")                # "workspaces/MLKit/projects/tss/src"
-test_dir       = os.path.join(tss_dir, "test")               # "workspaces/MLKit/projects/tss/test"
-data_dir       = os.path.join(tss_dir, "data")               # "workspaces/MLKit/projects/tss/data"
-# cai data_dir nay co the thay doi de ra cai dataset ngoai
-
-# NOTE: Inside MLKit
-root_dir       = os.path.dirname(os.path.dirname(tss_dir))   # "workspaces/MLKit"
-models_zoo_dir = os.path.join(root_dir, "models_zoo")        # "workspaces/MLKit/models_zoo"
-
-# NOTE: Inside workspaces
-workspaces_dir = os.path.dirname(root_dir)                   # "workspaces/"
-datasets_dir   = os.path.join(workspaces_dir, "datasets")    # "workspaces/datasets"
+if "DIR_TSS" in os.environ:
+    root_dir = os.environ["DIR_TSS"]
+else:
+    root_dir        = os.path.dirname(os.path.abspath(__file__))  	# "mon/project/aic-tss"
+src_dir        = os.path.join(root_dir, "src")                		# "mon/project/aic-tss/scr"
+data_dir       = os.path.join(root_dir, "data")              		# "mon/project/aic-tss/data"
+config_dir     = os.path.join(root_dir, "configs")              	# "mon/project/aic-tss/configs"
+models_zoo_dir = os.path.join(root_dir, "models")        			# "mon/project/aic-tss/models_zoo"
 
 
 # MARK: - Process Config

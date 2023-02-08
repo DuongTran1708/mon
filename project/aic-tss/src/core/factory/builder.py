@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from .factory import Factory
+from core.factory.factory import Factory
 
 __all__ = [
 	"CAMERAS",

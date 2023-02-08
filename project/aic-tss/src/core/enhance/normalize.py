@@ -16,7 +16,7 @@ from torch import Tensor
 from torchvision.transforms import Normalize
 from torchvision.transforms.functional import normalize
 
-from core.factory import TRANSFORMS
+from core.factory.builder import TRANSFORMS
 
 __all__ = [
     "denormalize",

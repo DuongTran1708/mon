@@ -27,9 +27,9 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from core.type import is_list_of
-from .device import get_gpu_memory
-from .device import MemoryUnit
+from core.type.collection import is_list_of
+from core.utils.device import get_gpu_memory
+from core.utils.device import MemoryUnit
 
 __all__ = [
 	"console",

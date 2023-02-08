@@ -11,10 +11,9 @@ from typing import Optional
 
 # noinspection PyUnresolvedReferences
 
-from torchkit.core.type import Callable
-from core.utils import console
-from core.utils import error_console
-from core.utils import print_table
+from core.type.type import Callable
+from core.utils.rich import console
+from core.utils.rich import print_table
 
 __all__ = [
 	"Registry"

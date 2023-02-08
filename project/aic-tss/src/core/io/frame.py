@@ -15,14 +15,14 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from core.io import create_dirs
-from core.type import Arrays
-from core.type import Dim3
-from core.utils import is_channel_first
-from core.utils import to_channel_last
-from .image import is_image_file
-from .video import is_video_file
-from .video import is_video_stream
+from core.io.filedir import create_dirs
+from core.type.type import Arrays
+from core.type.type import Dim3
+from core.utils.image import is_channel_first
+from core.utils.image import to_channel_last
+from core.io.image import is_image_file
+from core.io.video import is_video_file
+from core.io.video import is_video_stream
 
 __all__ = [
 	"FrameLoader", "FrameWriter"

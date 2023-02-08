@@ -15,10 +15,10 @@ import torch
 from torch import Tensor
 from torchvision.transforms import functional as F
 
-from torchkit.core.data import ClassLabels
-from torchkit.core.type import Dim3
-from torchkit.core.utils import select_device
-from torchkit.core.vision import padded_resize
+from core.data.class_label import ClassLabels
+from core.type.type import Dim3
+from core.utils.device import select_device
+from core.utils.geometric_transformation import padded_resize
 
 __all__ = [
 	"BaseDetector"

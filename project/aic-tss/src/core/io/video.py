@@ -13,12 +13,12 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from core.io import create_dirs
-from core.type import Arrays
-from core.type import Dim3
-from core.utils import is_channel_first
-from core.utils import to_channel_last
-from .format import VideoFormat
+from core.io.filedir import create_dirs
+from core.type.type import Arrays
+from core.type.type import Dim3
+from core.utils.image import is_channel_first
+from core.utils.image import to_channel_last
+from core.io.format import VideoFormat
 
 __all__ = [
 	"is_video_file",

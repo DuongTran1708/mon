@@ -6,4 +6,5 @@
 
 from __future__ import annotations
 
-from core.factory import *
+from .factory import *
+

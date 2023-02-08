@@ -14,9 +14,9 @@ import cv2
 import numpy as np
 from munch import Munch
 
-from core.file import load
-from core.utils import console
-from core.utils import print_table
+from core.io.file import load
+from core.utils.rich import console
+from core.utils.rich import print_table
 
 __all__ = [
 	"ClassLabels",

@@ -25,15 +25,15 @@ from PIL import ExifTags
 from PIL import Image
 from torch import Tensor
 
-from core.io import create_dirs
-from core.type import Arrays
-from core.enhance import denormalize_naive
-from core.utils import interpolation_vision_backend_from_int
-from core.utils import interpolation_vision_backend_from_str
-from core.utils import VisionBackend
-from core.utils import is_channel_first
-from core.utils import to_channel_last
-from .format import ImageFormat
+from core.io.filedir import create_dirs
+from core.type.type import Arrays
+from core.enhance.normalize import denormalize_naive
+from core.utils.backend import interpolation_vision_backend_from_int
+from core.utils.backend import interpolation_vision_backend_from_str
+from core.utils.backend import VisionBackend
+from core.utils.image import is_channel_first
+from core.utils.image import to_channel_last
+from core.io.format import ImageFormat
 
 __all__ = [
 	"exif_size",

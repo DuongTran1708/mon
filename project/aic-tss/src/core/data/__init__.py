@@ -6,4 +6,4 @@
 
 from __future__ import annotations
 
-from .class_label import *
+# from .class_label import *

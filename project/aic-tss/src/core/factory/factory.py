@@ -12,9 +12,9 @@ from typing import Union
 
 from munch import Munch
 
-from core.type import is_list_of
-from core.utils import error_console
-from .registry import Registry
+from core.type.collection import is_list_of
+from core.utils.rich import error_console
+from core.factory.registry import Registry
 
 __all__ = [
     "Factory",

@@ -41,9 +41,9 @@ from typing import Optional
 
 import validators
 
-from core.type import ScalarListOrTupleAnyT
-from core.type import unique
-from core.utils import console
+from core.type.type import ScalarListOrTupleAnyT
+from core.type.collection import unique
+from core.utils.rich import console
 
 __all__ = [
     "create_dirs",

@@ -14,9 +14,7 @@ import torch
 from multipledispatch import dispatch
 from torch import Tensor
 
-# from core.data import ClassLabels
-# from core.utils import error_console
-from .image import to_channel_last
+from core.utils import to_channel_last
 
 __all__ = [
 	"_draw_bbox",

@@ -20,10 +20,12 @@ from torch import Tensor
 from torchvision.transforms.functional import _is_numpy
 from torchvision.transforms.functional_pil import _is_pil_image
 
-from core.factory import TRANSFORMS
-from torchkit.core.type import is_list_of
-from torchkit.core.type import Size2T
-from torchkit.core.utils import error_console
+
+from core.type.collection import is_list_of
+from core.type.type import Size2T
+from core.utils.rich import error_console
+
+from core.factory.builder import TRANSFORMS
 
 __all__ = [
 	"get_image_size",
@@ -503,7 +505,7 @@ def to_tensor(
 
 	# NOTE: Normalize
 	if normalize:
-		from torchkit.core.vision import normalize_naive
+		from core.enhance import normalize_naive
 		_image = normalize_naive(_image)
 
 	if isinstance(_image, torch.ByteTensor):
@@ -634,7 +636,7 @@ def to_image(
 
 	# NOTE: Denormalize
 	if denormalize:
-		from torchkit.core.vision import denormalize_naive
+		from core.enhance import denormalize_naive
 		image = denormalize_naive(image)
 
 	return image.astype(np.uint8)

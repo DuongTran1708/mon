@@ -16,19 +16,19 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from core.data import ClassLabels
+from core.data.class_label import ClassLabels
 from core.io.filedir import is_basename
 from core.io.filedir import is_json_file
 from core.io.filedir import is_stem
-from mon.coreimage.constant import AppleRGB
-from core.io import FrameLoader
-from core.io import FrameWriter
-from core.io import is_video_file
-from core.factory import CAMERAS
-from core.factory import DETECTORS
-from detectors import BaseDetector
+from core.utils.constants import AppleRGB
+from core.io.frame import FrameLoader
+from core.io.frame import FrameWriter
+from core.io.video import is_video_file
+from core.factory.builder import CAMERAS
+from core.factory.builder import DETECTORS
+from detectors.base import BaseDetector
 from configuration import data_dir
-from .base import BaseCamera
+from cameras.base import BaseCamera
 
 
 # MARK: - AICVehicleCountingCamera
@@ -106,7 +106,6 @@ class AICTrafficSafetyCamera(BaseCamera):
 			moving_object: dict,
 			data_loader  : Union[FrameLoader,       dict],
 			data_writer  : Union[FrameWriter,       dict],
-			result_writer: Union[AICCountingWriter, dict],
 			id_          : Union[int, str] = uuid.uuid4().int,
 			verbose      : bool            = False,
 			save_image   : bool            = False,
@@ -167,7 +166,6 @@ class AICTrafficSafetyCamera(BaseCamera):
 		self.init_detector(detector=detector)
 		self.init_data_loader(data_loader=data_loader)
 		self.init_data_writer(data_writer=data_writer)
-		self.init_result_writer(result_writer=result_writer)
 
 		self.start_time = None
 		self.pbar       = None
@@ -273,34 +271,6 @@ class AICTrafficSafetyCamera(BaseCamera):
 			data_writer["save_video"] = self.save_video
 			self.data_writer = FrameWriter(**data_writer)
 
-	def init_result_writer(self, result_writer: Union[AICCountingWriter, dict]):
-		"""Initialize data writer.
-
-		Args:
-			result_writer (AICCountingWriter, dict):
-				Result writer object or a result writer's config dictionary.
-		"""
-		if isinstance(result_writer, AICCountingWriter):
-			self.result_writer = result_writer
-		elif isinstance(result_writer, dict):
-			dst = result_writer.get("dst", "")
-			if os.path.isfile(dst):
-				result_writer["dst"] = dst
-			elif is_basename(dst):
-				result_writer["dst"] = os.path.join(self.outputs_dir, f"{dst}")
-			elif is_stem(dst):
-				result_writer["dst"] = os.path.join(
-					self.outputs_dir, f"{dst}.txt"
-				)
-			else:
-				result_writer["dst"] = os.path.join(
-					self.outputs_dir, f"{self.name}.txt"
-				)
-			result_writer["camera_name"] = result_writer.get(
-				"camera_name", self.name
-			)
-			self.result_writer = AICCountingWriter(**result_writer)
-
 	# MARK: Run
 
 	def run(self):
@@ -359,8 +329,6 @@ class AICTrafficSafetyCamera(BaseCamera):
 			cv2.waitKey(1)
 		if self.save_video:
 			self.data_writer.write_frame(image=result)
-
-
 
 	# MARK: Visualize
 

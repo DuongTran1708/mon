@@ -169,7 +169,7 @@ def select_device(
 	else:
 		s += "CPU\n"
 
-	from torchkit.core.utils import console
+	from core.utils import console
 	console.log(s)
 	return torch.device("cuda:0" if cuda else "cpu")
 
@@ -184,7 +184,7 @@ def get_gpu_memory(
 	elif isinstance(unit, int):
 		unit = memory_unit_from_int(unit)
 	if unit not in MemoryUnit:
-		from torchkit.core.utils import error_console
+		from core.utils import error_console
 		error_console.log(f"Unknown memory unit: {unit}")
 		unit = MemoryUnit.GB
 

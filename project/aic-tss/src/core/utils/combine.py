@@ -14,8 +14,8 @@ import torchvision
 from multipledispatch import dispatch
 from torch import Tensor
 
-from .image import is_channel_first
-from .image import to_channel_last
+from core.utils.image import is_channel_first
+from core.utils import to_channel_last
 
 __all__ = [
 	"concatenate_images"

@@ -17,11 +17,11 @@ import numpy as np
 
 from core.data import ClassLabels
 from core.type import Arrays
-from .combine import concatenate_images
-from .image import to_4d_image_list
-from .image import to_channel_last
-from .image import to_image
-from .image import to_pil_image
+from core.utils import concatenate_images
+from core.utils import to_4d_image_list
+from core.utils import to_channel_last
+from core.utils import to_image
+from core.utils import to_pil_image
 
 plt.ion()
 # SUGAR: comment cho nay neu chay tren server, vi server unable GUI
@@ -66,7 +66,7 @@ def show_images(
 	cat_image = cat_image.numpy() if torch.is_tensor(cat_image) else cat_image
 	cat_image = to_channel_last(cat_image)
 	if denormalize:
-		from torchkit.core.vision import denormalize_naive
+		from core.enhance import denormalize_naive
 		cat_image = denormalize_naive(cat_image)
 	"""
 	# NOTE: Convert to PIL Image
@@ -131,7 +131,7 @@ def imshow_plt(
 	# NOTE: Prepare images
 	images_ = to_4d_image_list(images)  # List of 4D-array
 	images_ = [to_channel_last(i)	for i in images_]
-	from torchkit.core.vision import denormalize_naive
+	from core.enhance import denormalize_naive
 	images_ = [denormalize_naive(i) for i in images_]
 	images_ = [i[: show_max_n]    	for i in images_]
 	

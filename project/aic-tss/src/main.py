@@ -60,7 +60,7 @@ def main():
 	config_path = os.path.join(config_dir, args.config)
 
 	# DEBUG:
-	print(config_path)
+	# print(config_path)
 
 	camera_cfg  = load_config(config_path)
 
@@ -69,19 +69,12 @@ def main():
 
 	# Update value from args
 	camera_cfg["dataset"]      = args.dataset
-	camera_cfg["subset"]       = args.subset
 	camera_cfg["verbose"]      = args.verbose
 	camera_cfg["process"]      = {
 		"function_dets" : args.detection,  # Detection
 		"save_dets_crop": True,
 		"save_dets_pkl" : True,
 	}
-
-	# NOTE: add merge feat config if needed
-	camera_cfg["merge_feat"] = None
-	config_path = os.path.join(data_dir, args.dataset, "configs", args.config_feat_merge)
-	with open(config_path) as f:
-		camera_cfg["featuremerger"] = yaml.load(f, Loader=yaml.FullLoader)
 
 	# NOTE: Define camera
 	camera           = Camera(**camera_cfg)

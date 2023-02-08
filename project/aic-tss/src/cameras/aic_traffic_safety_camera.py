@@ -27,7 +27,10 @@ from core.io.video import is_video_file
 from core.factory.builder import CAMERAS
 from core.factory.builder import DETECTORS
 from detectors.base import BaseDetector
-from configuration import data_dir
+from configuration import (
+	data_dir,
+	config_dir
+)
 from cameras.base import BaseCamera
 
 
@@ -103,7 +106,6 @@ class AICTrafficSafetyCamera(BaseCamera):
 			name         : str,
 			class_labels : Union[ClassLabels,       dict],
 			detector     : Union[BaseDetector,      dict],
-			moving_object: dict,
 			data_loader  : Union[FrameLoader,       dict],
 			data_writer  : Union[FrameWriter,       dict],
 			id_          : Union[int, str] = uuid.uuid4().int,
@@ -134,8 +136,6 @@ class AICTrafficSafetyCamera(BaseCamera):
 				Detector object or a detector's config dictionary.
 			tracker (BaseTracker, dict):
 				Tracker object or a tracker's config dictionary.
-			moving_object (dict):
-				Config dictionary of moving object.
 			data_loader (FrameLoader, dict):
 				Data loader object or a data loader's config dictionary.
 			data_writer (VideoWriter, dict):
@@ -155,7 +155,6 @@ class AICTrafficSafetyCamera(BaseCamera):
 		"""
 		super().__init__(id_=id_, dataset=dataset, name=name)
 		self.subset            = subset
-		self.moving_object_cfg = moving_object
 		self.verbose           = verbose
 		self.save_image        = save_image
 		self.save_video        = save_video
@@ -174,8 +173,8 @@ class AICTrafficSafetyCamera(BaseCamera):
 
 	def init_dirs(self):
 		"""Initialize dirs."""
-		self.root_dir    = os.path.join(data_dir, self.dataset)
-		self.configs_dir = os.path.join(self.root_dir, "configs")
+		self.root_dir    = os.path.join(data_dir)
+		self.configs_dir = os.path.join(config_dir)
 		self.outputs_dir = os.path.join(self.root_dir, "outputs")
 		self.video_dir   = os.path.join(self.root_dir, self.subset)
 

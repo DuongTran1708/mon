@@ -307,6 +307,5 @@ class BaseDetector(metaclass=abc.ABCMeta):
 			None
 		"""
 		if self.model is not None:
-			self.model.cpu()
 			del self.model
 			torch.cuda.empty_cache()

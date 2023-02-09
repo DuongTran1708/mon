@@ -244,7 +244,17 @@ class AICTrafficSafetyCamera(BaseCamera):
 							name_index_in = f"{index_in:08d}"
 							bbox_xyxy     = [int(i) for i in instance.bbox]
 
-							# NOTE: crop the bounding box
+							# NOTE: crop the bounding box, add 40 or 1.2 scale
+							cx = 0.5 * bbox_xyxy[0] + 0.5 * bbox_xyxy[2]
+							cy = 0.5 * bbox_xyxy[1] + 0.5 * bbox_xyxy[3]
+							w = abs(bbox_xyxy[2] - bbox_xyxy[0])
+							w = min(w * 1.2, w + 40)
+							h = abs(bbox_xyxy[3] - bbox_xyxy[1])
+							h = min(h * 1.2, h + 40)
+							bbox_xyxy[0] = int(max(0, cx - 0.5 * w))
+							bbox_xyxy[1] = int(max(0, cy - 0.5 * h))
+							bbox_xyxy[2] = int(min(width_img - 1, cx + 0.5 * w))
+							bbox_xyxy[3] = int(min(height_img - 1, cy + 0.5 * h))
 							crop_image = images[index_b][bbox_xyxy[1]:bbox_xyxy[3], bbox_xyxy[0]:bbox_xyxy[2]]
 
 							result_dict = {
@@ -253,7 +263,9 @@ class AICTrafficSafetyCamera(BaseCamera):
 								'crop_img'   : crop_image,
 								'bbox'       : (bbox_xyxy[0], bbox_xyxy[1], bbox_xyxy[2], bbox_xyxy[3]),
 								'class_id'   : instance.class_label["train_id"],
-								'conf'       : instance.confidence
+								'conf'       : instance.confidence,
+								'width_img'  : width_img,
+								'height_img' : height_img
 							}
 							out_dict.append(result_dict)
 

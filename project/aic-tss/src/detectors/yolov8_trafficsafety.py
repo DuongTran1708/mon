@@ -12,14 +12,12 @@ from collections import OrderedDict
 
 import numpy as np
 from torch import Tensor
-import torch
-import torch.nn as nn
 
 from core.io.filedir import is_torch_saved_file
 from core.utils.bbox import scale_bbox_xyxy
-
-
-
+from core.utils.geometric_transformation import padded_resize
+from core.utils.image import to_tensor
+from core.utils.image import is_channel_first
 from core.factory.builder import DETECTORS
 from core.objects.instance import Instance
 from configuration import models_zoo_dir
@@ -31,20 +29,19 @@ sys.path.append('src/detectors/ultralytics')
 from detectors.ultralytics.ultralytics import YOLO
 
 __all__ = [
-	"yolov8_trafficsafety"
+	"YOLOv8"
 ]
 
 
 # MARK: - YOLOv5
 
-# noinspection PyShadowingBuiltins
 @DETECTORS.register(name="yolov8_trafficsafety")
 class YOLOv8(BaseDetector):
 	"""YOLOv8 object detector."""
 
 	# MARK: Magic Functions
 
-	def __init__(self, name: str = "yolov5_mtmc", *args, **kwargs):
+	def __init__(self, name: str = "yolov8_trafficsafety", *args, **kwargs):
 		super().__init__(name=name, *args, **kwargs)
 
 	# MARK: Configure
@@ -59,14 +56,68 @@ class YOLOv8(BaseDetector):
 		assert is_torch_saved_file(path), f"Not a weights file: {path}"
 
 		# NOTE: load model
-		self.model  = YOLO(path)
-
-		# NOTE: Eval
+		self.model = YOLO(path)
 		self.model.to(device=self.device)
-		self.model.eval()
 
+		# DEBUG:
+		# print("*************")
+		# print(dir(self.model))
+		# print(self.model.overrides)
+		# print("*************")
 
 	# MARK: Detection
+
+	def detect(self, indexes: np.ndarray, images: np.ndarray) -> list:
+		"""Detect objects in the images.
+
+		Args:
+			indexes (np.ndarray):
+				Image indexes.
+			images (np.ndarray):
+				Images of shape [B, H, W, C].
+
+		Returns:
+			instances (list):
+				List of `Instance` objects.
+		"""
+		# NOTE: Safety check
+		if self.model is None:
+			print("Model has not been defined yet!")
+			raise NotImplementedError
+
+		# NOTE: Preprocess
+		input = self.preprocess(images=images)
+		# NOTE: Forward
+		pred  = self.forward(input)
+		# NOTE: Postprocess
+		instances = self.postprocess(
+			indexes=indexes, images=images, input=input, pred=pred
+		)
+		# NOTE: Suppression
+		instances = self.suppress_wrong_labels(instances=instances)
+
+		return instances
+
+	def preprocess(self, images: np.ndarray) -> Tensor:
+		"""Preprocess the input images to model's input image.
+
+		Args:
+			images (np.ndarray):
+				Images of shape [B, H, W, C].
+
+		Returns:
+			input (Tensor):
+				Models' input.
+		"""
+		input = images
+		# if self.shape:
+		# 	input = padded_resize(input, self.shape, stride=self.stride)
+		# 	self.resize_original = True
+		# #input = [F.to_tensor(i) for i in input]
+		# #input = torch.stack(input)
+		# input = to_tensor(input, normalize=True)
+		# input = input.to(self.device)
+		return input
 
 	def forward(self, input: Tensor) -> Tensor:
 		"""Forward pass.
@@ -79,8 +130,26 @@ class YOLOv8(BaseDetector):
 			pred (Tensor):
 				Predictions.
 		"""
-		pred = self.model(input, augment=False)[0]
+		# Get image size of detector
+		if is_channel_first(np.ndarray(self.shape)):
+			img_size = self.shape[2]
+		else:
+			img_size = self.shape[0]
 
+		# DEBUG:
+		# print(dir(self.model))
+		# print(self.model.overrides)
+		# sys.exit()
+
+		pred = self.model(
+			input,
+			imgsz   = img_size,
+			conf    = self.min_confidence,
+			iou     = self.nms_max_overlap,
+			classes = self.allowed_ids,
+			augment = True,
+			verbose = False,
+		)
 		return pred
 
 	def postprocess(
@@ -107,32 +176,26 @@ class YOLOv8(BaseDetector):
 			instances (list):
 				List of `Instances` objects.
 		"""
-		# NOTE: Resize
-		if self.resize_original:
-			for pre_ in pred:
-				bboxes_xyxy = pre_[:, :4].cpu().detach()
-				pre_[:, :4] = scale_bbox_xyxy(
-					xyxy       = bboxes_xyxy,
-					image_size = input.shape[2 :],
-					new_size   = images.shape[1: 3]
-				).round()
-
 		# NOTE: Create Detection objects
 		instances = []
-		for idx, pre_ in enumerate(pred):
-			# SUGAR: add more for the same as original code
-			pre_[:, :4] = scale_coords(input.shape[2:], pre_[:, :4], images.shape[1: 3]).round()
+		# DEBUG:
+		# print("******")
+		# for result in pred:
+		# 	# detection
+		# 	result.boxes.xyxy  # box with xyxy format, (N, 4)
+		# 	result.boxes.xywh  # box with xywh format, (N, 4)
+		# 	result.boxes.xyxyn  # box with xyxy format but normalized, (N, 4)
+		# 	result.boxes.xywhn  # box with xywh format but normalized, (N, 4)
+		# 	result.boxes.conf  # confidence score, (N, 1)
+		# 	result.boxes.cls  # cls, (N, 1)
+		# print("******")
 
+		for idx, result in enumerate(pred):
 			inst = []
-			for *xyxy, conf, cls in pre_:
-				bbox_xyxy = np.array([xyxy[0].item(), xyxy[1].item(),
-									  xyxy[2].item(), xyxy[3].item()], np.int32)
-
-				# SUGAR:
-				if bbox_xyxy[0] < 0 or bbox_xyxy[1] < 0 or  \
-						bbox_xyxy[2] > images.shape[2] - 1 or bbox_xyxy[3] > im0.shape[0] - 1:
-					continue
-
+			xyxys = result.boxes.xyxy.cpu().numpy()
+			confs = result.boxes.conf.cpu().numpy()
+			clses = result.boxes.cls.cpu().numpy()
+			for bbox_xyxy, conf, cls in zip(xyxys, confs, clses):
 				confident  = float(conf)
 				class_id   = int(cls)
 				class_label = self.class_labels.get_class_label(

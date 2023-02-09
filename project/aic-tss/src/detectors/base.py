@@ -103,6 +103,7 @@ class BaseDetector(metaclass=abc.ABCMeta):
 
 	# MARK: Detection
 
+	@abc.abstractmethod
 	def detect(self, indexes: np.ndarray, images: np.ndarray) -> list:
 		"""Detect objects in the images.
 
@@ -116,23 +117,7 @@ class BaseDetector(metaclass=abc.ABCMeta):
 			instances (list):
 				List of `Instance` objects.
 		"""
-		# NOTE: Safety check
-		if self.model is None:
-			print("Model has not been defined yet!")
-			raise NotImplementedError
-
-		# NOTE: Preprocess
-		input = self.preprocess(images=images)
-		# NOTE: Forward
-		pred  = self.forward(input)
-		# NOTE: Postprocess
-		instances = self.postprocess(
-			indexes=indexes, images=images, input=input, pred=pred
-		)
-		# NOTE: Suppression
-		instances = self.suppress_wrong_labels(instances=instances)
-
-		return instances
+		pass
 
 	@abc.abstractmethod
 	def forward(self, input: Tensor) -> Tensor:
@@ -148,6 +133,7 @@ class BaseDetector(metaclass=abc.ABCMeta):
 		"""
 		pass
 
+	@abc.abstractmethod
 	def preprocess(self, images: np.ndarray) -> Tensor:
 		"""Preprocess the input images to model's input image.
 
@@ -159,15 +145,7 @@ class BaseDetector(metaclass=abc.ABCMeta):
 			input (Tensor):
 				Models' input.
 		"""
-		input = images
-		if self.shape:
-			input = padded_resize(input, self.shape, stride=self.stride)
-			self.resize_original = True
-		#input = [F.to_tensor(i) for i in input]
-		#input = torch.stack(input)
-		input = to_tensor(input, normalize=True)
-		input = input.to(self.device)
-		return input
+		pass
 
 	@abc.abstractmethod
 	def postprocess(

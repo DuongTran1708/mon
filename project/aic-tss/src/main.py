@@ -72,8 +72,6 @@ def main():
 	camera_cfg["verbose"]      = args.verbose
 	camera_cfg["process"]      = {
 		"function_dets" : args.detection,  # Detection
-		"save_dets_crop": True,
-		"save_dets_pkl" : True,
 	}
 
 	# NOTE: Define camera

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import uuid
+import glob
 from timeit import default_timer as timer
 from typing import Union
 
@@ -22,10 +23,12 @@ from core.io.filedir import is_basename
 from core.io.filedir import is_json_file
 from core.io.filedir import is_stem
 from core.utils.bbox import bbox_xyxy_to_cxcywh_norm
+from core.utils.rich import console
 from core.utils.constants import AppleRGB
 from core.io.frame import FrameLoader
 from core.io.frame import FrameWriter
 from core.io.video import is_video_file
+from core.io.video import VideoLoader
 from core.factory.builder import CAMERAS
 from core.factory.builder import DETECTORS
 from detectors.base import BaseDetector
@@ -46,19 +49,16 @@ class AICTrafficSafetyCamera(BaseCamera):
 
 	def __init__(
 			self,
+			data         : dict,
 			dataset      : str,
-			subset       : str,
 			name         : str,
 			class_labels : Union[ClassLabels,       dict],
 			detector     : Union[BaseDetector,      dict],
-			data_loader  : Union[FrameLoader,       dict],
+			data_loader  : dict,
 			data_writer  : Union[FrameWriter,       dict],
 			process      : dict,
 			id_          : Union[int, str] = uuid.uuid4().int,
 			verbose      : bool            = False,
-			save_image   : bool            = False,
-			save_video   : bool            = False,
-			save_results : bool            = True,
 			*args, **kwargs
 	):
 		"""
@@ -74,43 +74,32 @@ class AICTrafficSafetyCamera(BaseCamera):
 				files.
 			class_labels (ClassLabels, dict):
 				ClassLabels object or a config dictionary.
-			rois (list[ROI], dict):
-				List of ROIs or a config dictionary.
-			mois (list[MOI], dict):
-				List of MOIs or a config dictionary.
 			detector (BaseDetector, dict):
 				Detector object or a detector's config dictionary.
-			tracker (BaseTracker, dict):
-				Tracker object or a tracker's config dictionary.
 			data_loader (FrameLoader, dict):
 				Data loader object or a data loader's config dictionary.
 			data_writer (VideoWriter, dict):
 				Data writer object or a data writer's config dictionary.
-			result_writer (AICCountingWriter, dict):
-				Result writer object or a result writer's config dictionary.
 			id_ (int, str):
 				Camera's unique ID.
 			verbose (bool):
 				Verbosity mode. Default: `False`.
-			save_image (bool):
-				Should save individual images? Default: `False`.
-			save_video (bool):
-				Should save video? Default: `False`.
-			save_results (bool):
-				Should save results? Default: `False`.
 		"""
 		super().__init__(id_=id_, dataset=dataset, name=name)
 		self.process      = process
 		self.verbose      = verbose
-		self.save_image   = save_image
-		self.save_video   = save_video
-		self.save_results = save_results
+
+		self.data_cfg        = data
+		self.detector_cfg    = detector
+		self.data_loader_cfg = data_loader
+		self.data_writer_cfg = data_writer
 
 		self.init_dirs()
 		self.init_class_labels(class_labels=class_labels)
-		self.init_detector(detector=detector)
-		self.init_data_loader(data_loader=data_loader)
-		self.init_data_writer(data_writer=data_writer)
+		self.init_data_writer(data_writer_cfg=self.data_writer_cfg)
+
+		if self.process["function_dets"]:
+			self.init_detector(detector=detector)
 
 		self.start_time = None
 		self.pbar       = None
@@ -125,8 +114,8 @@ class AICTrafficSafetyCamera(BaseCamera):
 		"""
 		self.root_dir    = os.path.join(data_dir)
 		self.configs_dir = os.path.join(config_dir)
-		self.outputs_dir = os.path.join(self.root_dir, "outputs")
-		self.video_dir   = os.path.join(self.root_dir, "videos")
+		self.outputs_dir = os.path.join(self.root_dir, self.data_writer_cfg["dst"])
+		self.video_dir   = os.path.join(self.root_dir, self.data_loader_cfg["data"])
 
 	def init_class_labels(self, class_labels: Union[ClassLabels, dict]):
 		"""Initialize class_labels.
@@ -157,6 +146,7 @@ class AICTrafficSafetyCamera(BaseCamera):
 			detector (BaseDetector, dict):
 				Detector object or a detector's config dictionary.
 		"""
+		console.log(f"Initiate Detector.")
 		if isinstance(detector, BaseDetector):
 			self.detector = detector
 		elif isinstance(detector, dict):
@@ -165,60 +155,42 @@ class AICTrafficSafetyCamera(BaseCamera):
 		else:
 			raise ValueError(f"Cannot initialize detector with {detector}.")
 
-	def init_data_loader(self, data_loader: Union[FrameLoader, dict]):
+	def init_data_loader(self, data_loader_cfg: dict):
 		"""Initialize data loader.
 
 		Args:
-			data_loader (FrameLoader, dict):
+			data_loader_cfg (dict):
 				Data loader object or a data loader's config dictionary.
 		"""
-		if isinstance(data_loader, FrameLoader):
-			self.data_loader = data_loader
-		elif isinstance(data_loader, dict):
-			data = data_loader.get("data", "")
-			if is_video_file(data):
-				data_loader["data"] = data
-			elif is_basename(data):
-				data_loader["data"] = os.path.join(self.video_dir, f"{data}")
-			elif is_stem(data):
-				data_loader["data"] = os.path.join(
-					self.video_dir, f"{data}.mp4"
-				)
-			else:
-				data_loader["data"] = os.path.join(
-					self.video_dir, f"{self.name}.mp4"
-				)
-			self.data_loader = FrameLoader(**data_loader)
-		else:
-			raise ValueError(f"Cannot initialize data loader with"
-							 f" {data_loader}.")
+		if self.process["function_dets"]:
+			self.data_loader = sorted(glob.glob(os.path.join(self.video_dir, self.data_cfg["type"])))
 
-	def init_data_writer(self, data_writer: Union[FrameWriter, dict]):
+	def check_and_create_folder(self, attr, data_writer_cfg: dict):
+		"""CHeck and create the folder to store the result
+
+		Args:
+			attr (str):
+				the type of function/saving/creating
+			data_writer_cfg (dict):
+				configuration of camera
+		Returns:
+			None
+		"""
+		path = os.path.join(self.outputs_dir, f"{data_writer_cfg[attr]}")
+		if not os.path.isdir(path):
+			os.makedirs(path)
+		data_writer_cfg[attr] = path
+
+	def init_data_writer(self, data_writer_cfg: dict):
 		"""Initialize data writer.
 
 		Args:
-			data_writer (FrameWriter, dict):
+			data_writer_cfg (FrameWriter, dict):
 				Data writer object or a data writer's config dictionary.
 		"""
-		if isinstance(data_writer, FrameWriter):
-			self.data_writer = data_writer
-		elif isinstance(data_writer, dict):
-			dst = data_writer.get("dst", "")
-			if is_video_file(dst):
-				data_writer["dst"] = dst
-			elif is_basename(dst):
-				data_writer["dst"] = os.path.join(self.outputs_dir, f"{dst}")
-			elif is_stem(dst):
-				data_writer["dst"] = os.path.join(
-					self.outputs_dir, f"{dst}.mp4"
-				)
-			else:
-				data_writer["dst"] = os.path.join(
-					self.outputs_dir, f"{self.name}.mp4"
-				)
-			data_writer["save_image"] = self.save_image
-			data_writer["save_video"] = self.save_video
-			self.data_writer = FrameWriter(**data_writer)
+		# NOTE: save detections txt
+		data_writer_cfg["dst_crop_pkl"] = f'{data_writer_cfg["dst_crop_pkl"]}/{self.detector_cfg["folder_out"]}'
+		self.check_and_create_folder("dst_crop_pkl", data_writer_cfg=data_writer_cfg)
 
 	# MARK: Run
 
@@ -230,104 +202,73 @@ class AICTrafficSafetyCamera(BaseCamera):
 		"""
 		# NOTE: Load dataset
 		self.data_loader_cfg["batch_size"] = self.detector_cfg["batch_size"]
-		self.init_data_loader(data_loader=self.data_loader_cfg)
+		self.init_data_loader(data_loader_cfg=self.data_loader_cfg)
 
 		# NOTE: run detection
-		pbar = tqdm(total=len(self.data_loader), desc=f"Detection: {self.name}")
+		pbar = tqdm(total=len(self.data_loader), desc="Detection process: ")
 		with torch.no_grad():  # phai them cai nay khong la bi memory leak
-			height_img, width_img = None, None
-			index_image           = -1
-			out_dict              = dict()
+			for video_path in self.data_loader:
+				# Init parameter
+				basename       = os.path.basename(video_path)
+				basename_noext = os.path.splitext(basename)[0]
+				height_img    , width_img = None, None
+				index_image    = 0
+				out_dict       = []
 
-			for images, indexes, _, _ in self.data_loader:
-				# NOTE: if finish loading
-				if len(indexes) == 0:
-					break
+				video_loader = VideoLoader(data=video_path, batch_size=self.data_loader_cfg["batch_size"])
+				pbar_video = tqdm(total=len(video_loader), desc=f"Video {basename}:")
 
-				# NOTE: get size of image
-				if height_img is None:
-					height_img, width_img, _ = images[0].shape
+				# NOTE: run each video
+				for images, indexes, _, _ in video_loader:
+					# NOTE: pre process
+					# if finish loading
+					if len(indexes) == 0:
+						break
 
-				# NOTE: Detect batch of instances
-				batch_instances = self.detector.detect(
-					indexes=indexes, images=images
-				)
+					# get size of image
+					if height_img is None:
+						height_img, width_img, _ = images[0].shape
 
-				# NOTE: Write the detection result
-				for index_b, batch in enumerate(batch_instances):
-					image_draw = images[index_b].copy()
-					index_image       += 1
-					name_index_image  = f"{index_image:06d}"
+					# NOTE: Detect batch of instances
+					batch_instances = self.detector.detect(
+						indexes=indexes, images=images
+					)
 
-					if self.process["save_dets_txt"]:
-						with open(f'{self.data_writer["dst_label"]}/{name_index_image}.txt', 'w') as f_write:
-							pass
+					# NOTE: Write the detection result
+					for index_b, batch in enumerate(batch_instances):
+						image_draw = images[index_b].copy()
+						index_image       += 1
+						name_index_image  = f"{index_image:06d}"
 
-					for index_in, instance in enumerate(batch):
-						name_index_in = f"{index_in:08d}"
-						bbox_xyxy     = instance.bbox
+						for index_in, instance in enumerate(batch):
+							name_index_in = f"{index_in:08d}"
+							bbox_xyxy     = [int(i) for i in instance.bbox]
 
-						# NOTE: avoid out of image bound
-						# if int(bbox_xyxy[0]) < 0 or \
-						# 		int(bbox_xyxy[1]) < 0 or \
-						# 		int(bbox_xyxy[2]) > image_draw.shape[1] - 1 or \
-						# 		int(bbox_xyxy[3]) > image_draw.shape[0] - 1:
-						# 	print(bbox_xyxy)
-						# 	continue
+							# NOTE: crop the bounding box
+							crop_image = images[index_b][bbox_xyxy[1]:bbox_xyxy[3], bbox_xyxy[0]:bbox_xyxy[2]]
 
-						# NOTE: small than 1000, removed, base on rules
-						# if abs((bbox_xyxy[3] - bbox_xyxy[1]) * (bbox_xyxy[2] - bbox_xyxy[0])) < 1000:
-						# 	continue
+							result_dict = {
+								'video_name' : basename_noext,
+								'frame_id'   : name_index_image,
+								'crop_img'   : crop_image,
+								'bbox'       : (bbox_xyxy[0], bbox_xyxy[1], bbox_xyxy[2], bbox_xyxy[3]),
+								'class_id'   : instance.class_label["train_id"],
+								'conf'       : instance.confidence
+							}
+							out_dict.append(result_dict)
 
-						crop_image    = images[index_b][bbox_xyxy[1]:bbox_xyxy[3], bbox_xyxy[0]:bbox_xyxy[2]]
+					pbar_video.update(len(indexes))
 
-						# NOTE: write crop object image
-						if self.process["save_dets_crop"]:
-							dets_crop_name = f"{name_index_image}_{name_index_in}"
-							self.data_writer_dets_crop.write_frame(crop_image, dets_crop_name)
-
-							if self.process["save_dets_pkl"]:
-								out_dict[dets_crop_name] = {
-									'bbox'   : (bbox_xyxy[0], bbox_xyxy[1], bbox_xyxy[2], bbox_xyxy[3]),
-									'frame'  : name_index_image,
-									'id'     : name_index_in,
-									'imgname': f"{dets_crop_name}.png",
-									'class'  : instance.class_label["train_id"],
-									'conf'   : instance.confidence
-								}
-
-						# NOTE: write txt
-						if self.process["save_dets_txt"]:
-							bbox_cxcywh_norm = bbox_xyxy_to_cxcywh_norm(bbox_xyxy, height_img, width_img)
-							with open(f'{self.data_writer["dst_label"]}/{name_index_image}.txt', 'a') as f_write:
-								f_write.write(f'{instance.class_label["train_id"]} '
-											  f'{instance.confidence} '
-											  f'{bbox_cxcywh_norm[0]} '
-											  f'{bbox_cxcywh_norm[1]} '
-											  f'{bbox_cxcywh_norm[2]} '
-											  f'{bbox_cxcywh_norm[3]}\n')
-
-						if self.process["save_dets_img"]:
-							instance.draw(image_draw, bbox=True, score=True)
-
-					# DEBUG: show detection result
-					# cv2.imshow("result", images[index_b])
-					# cv2.waitKey(1)
-
-					# NOTE: write result image
-					if self.process["save_dets_img"]:
-						self.data_writer_dets_debug.write_frame(image_draw, name_index_image)
-
-				# NOTE: get feature of all crop images
-
-				pbar.update(len(indexes))  # Update pbar
-
-			if self.process["save_dets_pkl"]:
+				# NOTE: save pickle
 				pickle.dump(
 					out_dict,
-					open(f"{os.path.join(self.data_writer['dst_crop_pkl'], self.name)}_dets_crop.pkl", 'wb')
+					open(f"{os.path.join(self.data_writer_cfg['dst_crop_pkl'], basename_noext)}.pkl", 'wb')
 				)
 
+				# Post process
+				del video_loader
+				pbar_video.close()
+				pbar.update(1)
 		pbar.close()
 
 	def run(self):
@@ -344,16 +285,14 @@ class AICTrafficSafetyCamera(BaseCamera):
 
 	def run_routine_start(self):
 		"""Perform operations when run routine starts. We start the timer."""
-		self.pbar       = tqdm(total=len(self.data_loader), desc=f"{self.name}")
 		self.start_time = timer()
-
 		if self.verbose:
 			cv2.namedWindow(self.name, cv2.WINDOW_KEEPRATIO)
 
 	def run_routine_end(self):
 		"""Perform operations when run routine ends."""
-		self.pbar.close()
 		cv2.destroyAllWindows()
+		self.stop_time = timer()
 
 	def postprocess(self, image: np.ndarray, *args, **kwargs):
 		"""Perform some postprocessing operations when a run step end.
@@ -366,9 +305,8 @@ class AICTrafficSafetyCamera(BaseCamera):
 			return
 
 		elapsed_time = timer() - self.start_time
-		result       = self.draw(drawing=image, elapsed_time=elapsed_time)
 		if self.verbose:
-			cv2.imshow(self.name, result)
+			# cv2.imshow(self.name, result)
 			cv2.waitKey(1)
 
 	# MARK: Visualize
@@ -386,27 +324,4 @@ class AICTrafficSafetyCamera(BaseCamera):
 			drawing (np.ndarray):
 				Drawn canvas.
 		"""
-		# NOTE: Draw ROI
-		[roi.draw(drawing=drawing) for roi in self.rois]
-		# NOTE: Draw MOIs
-		[moi.draw(drawing=drawing) for moi in self.mois]
-		# NOTE: Draw Vehicles
-		[gmo.draw(drawing=drawing) for gmo in self.mos]
-		# NOTE: Draw frame index
-		fps  = self.data_loader.index / elapsed_time
-		text = (f"Frame: {self.data_loader.index}: "
-				f"{format(elapsed_time, '.3f')}s ({format(fps, '.1f')} fps)")
-		font = cv2.FONT_HERSHEY_SIMPLEX
-		org  = (20, 30)
-		cv2.rectangle(img=drawing, pt1= (10, 0), pt2=(600, 40),
-					  color=AppleRGB.BLACK.value, thickness=-1)
-		cv2.putText(
-			img       = drawing,
-			text      = text,
-			fontFace  = font,
-			fontScale = 1.0,
-			org       = org,
-			color     = AppleRGB.WHITE.value,
-			thickness = 2
-		)
 		return drawing

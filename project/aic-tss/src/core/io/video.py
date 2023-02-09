@@ -132,7 +132,7 @@ class VideoLoader:
 				
 				self.index += 1
 
-			return np.array(images), indexes, files, rel_paths
+			return images, indexes, files, rel_paths
 
 	def __del__(self):
 		"""Close the `video_capture` object."""

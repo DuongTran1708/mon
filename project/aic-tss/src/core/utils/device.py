@@ -169,7 +169,7 @@ def select_device(
 	else:
 		s += "CPU\n"
 
-	from core.utils import console
+	from core.utils.rich import console
 	console.log(s)
 	return torch.device("cuda:0" if cuda else "cpu")
 

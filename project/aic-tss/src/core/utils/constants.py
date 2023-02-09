@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import torch
+
 # from ordered_enum import OrderedEnum
 from enum import Enum
 
@@ -224,3 +226,13 @@ class RGB(Enum):
 				List of all color tuple.
 		"""
 		return [e.value for e in RGB]
+
+DEFAULT_CROP_PCT        = 0.875
+IMAGENET_DEFAULT_MEAN   = (0.485, 0.456, 0.406)
+IMAGENET_DEFAULT_STD    = (0.229, 0.224, 0.225)
+IMAGENET_INCEPTION_MEAN = (0.5, 0.5, 0.5)
+IMAGENET_INCEPTION_STD  = (0.5, 0.5, 0.5)
+IMAGENET_DPN_MEAN       = (124 / 255, 117 / 255, 104 / 255)
+IMAGENET_DPN_STD        = tuple([1 / (.0167 * 255)] * 3)
+
+PI = torch.tensor(3.14159265358979323846)

@@ -16,16 +16,17 @@ from core.io.file import load
 
 # MARK: - Directories
 
-# NOTE: Inside tss
 if "DIR_TSS" in os.environ:
-    root_dir = os.environ["DIR_TSS"]
+    root_dir   = os.environ["DIR_TSS"]
 else:
-    root_dir        = os.path.dirname(os.path.abspath(__file__))  	# "mon/project/aic-tss"
+    root_dir   = os.path.dirname(os.path.abspath(__file__))  	    # "mon/project/aic-tss"
 src_dir        = os.path.join(root_dir, "src")                		# "mon/project/aic-tss/scr"
-data_dir       = os.path.join(root_dir, "data")              		# "mon/project/aic-tss/data"
 config_dir     = os.path.join(root_dir, "configs")              	# "mon/project/aic-tss/configs"
 models_zoo_dir = os.path.join(root_dir, "models")        			# "mon/project/aic-tss/models_zoo"
-
+if "DIR_DATA" in os.environ:
+    data_dir   = os.environ["DIR_DATA"]
+else:
+    data_dir   = os.path.join(root_dir, "data")              		# "mon/project/aic-tss/data"
 
 # MARK: - Process Config
 

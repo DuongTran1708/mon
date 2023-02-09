@@ -35,22 +35,8 @@ class_labels:
   file: "class_labels.json"
   # Config file containing class_labels.
 
-#rois:
-#  file: "cam_1.json"
-#  # Roi file.
-#
-#mois:
-#  file: "cam_1.json"
-#  # Moi file.
-#  distance_function: "hausdorff"
-#  # Distance function.
-#  distance_threshold: 300
-#  # Maximum distance for counting with track.
-#  angle_threshold: 45
-#  # Maximum angle for counting with track.
-
 detector:
-  name: "yolov5_mtmc"
+  name: "yolov8_trafficsafety"
   # Name of the detector model.
   model_cfg:
   # Detector model config.
@@ -58,7 +44,7 @@ detector:
     # YOLOv5 variances.
     nc: 80
     # Number of classes.
-  weights: "pretrained/yolov5/yolov5x61.pt"
+  weights: "models_zoo/yolov8/yolov5x61.pt"
   # Pretrained weights file.
   shape: [1280, 1280, 3]
   # Input size as [C, H, W].

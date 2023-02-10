@@ -23,8 +23,13 @@ START_TIME="$(date -u +%s.%N)"
 ###########################################################################################################
 
 # NOTE: DETECTION
+#python $DIR_SOURCE/main.py  \
+#    --detection  \
+#    --config $DIR_TSS"/configs/default.yaml"
+
+# NOTE: WRITE FINAL RESULT
 python $DIR_SOURCE/main.py  \
-    --detection  \
+    --write_final  \
     --config $DIR_TSS"/configs/default.yaml"
 
 ###########################################################################################################

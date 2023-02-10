@@ -15,7 +15,7 @@ from time import perf_counter
 import yaml
 
 from core.utils.rich import console
-from cameras import AICTrafficSafetyCamera
+from cameras import AICTrafficSafetyCameraS1
 
 from configuration import (
 	data_dir,
@@ -42,10 +42,13 @@ parser.add_argument(
 	"--detection", action='store_true', help="Should run detection."
 )
 parser.add_argument(
+	"--write_final", action='store_true', help="Should run detection."
+)
+parser.add_argument(
 	"--verbose", action='store_true', help="Should visualize the images."
 )
 
-Camera = AICTrafficSafetyCamera
+Camera = AICTrafficSafetyCameraS1
 
 
 # MARK: - Main Function
@@ -71,7 +74,8 @@ def main():
 	camera_cfg["dataset"]      = args.dataset
 	camera_cfg["verbose"]      = args.verbose
 	camera_cfg["process"]      = {
-		"function_dets" : args.detection,  # Detection
+		"function_dets"        : args.detection,  # Detection
+		"function_write_final" : args.write_final,  # Detection
 	}
 
 	# NOTE: Define camera

@@ -6,4 +6,4 @@
 
 from __future__ import annotations
 
-from .aic_traffic_safety_camera import *
+from .aic_traffic_safety_camera_s1 import *

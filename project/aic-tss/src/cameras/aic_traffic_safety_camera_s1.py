@@ -38,12 +38,16 @@ from configuration import (
 )
 from cameras.base import BaseCamera
 
+__all__ = [
+	"AICTrafficSafetyCameraS1"
+]
 
 # MARK: - AICVehicleCountingCamera
 
+
 # noinspection PyAttributeOutsideInit
-@CAMERAS.register(name="aic_traffic_safety_camera")
-class AICTrafficSafetyCamera(BaseCamera):
+@CAMERAS.register(name="aic_traffic_safety_camera_solution_1")
+class AICTrafficSafetyCameraS1(BaseCamera):
 
 	# MARK: Magic Functions
 
@@ -162,8 +166,10 @@ class AICTrafficSafetyCamera(BaseCamera):
 			data_loader_cfg (dict):
 				Data loader object or a data loader's config dictionary.
 		"""
-		if self.process["function_dets"]:
-			self.data_loader = sorted(glob.glob(os.path.join(self.video_dir, self.data_cfg["type"])))
+		# if self.process["function_dets"]:
+		# 	return sorted(glob.glob(os.path.join(self.video_dir, self.data_cfg["type"])))
+		pass
+
 
 	def check_and_create_folder(self, attr, data_writer_cfg: dict):
 		"""CHeck and create the folder to store the result
@@ -194,6 +200,29 @@ class AICTrafficSafetyCamera(BaseCamera):
 
 	# MARK: Run
 
+	def scaleup_bbox(self, bbox_xyxy, height_img, width_img):
+		"""Scale up 1.2% or +-40
+
+		Args:
+			bbox_xyxy:
+			height_img:
+			width_img:
+
+		Returns:
+
+		"""
+		cx = 0.5 * bbox_xyxy[0] + 0.5 * bbox_xyxy[2]
+		cy = 0.5 * bbox_xyxy[1] + 0.5 * bbox_xyxy[3]
+		w = abs(bbox_xyxy[2] - bbox_xyxy[0])
+		w = min(w * 1.2, w + 40)
+		h = abs(bbox_xyxy[3] - bbox_xyxy[1])
+		h = min(h * 1.2, h + 40)
+		bbox_xyxy[0] = int(max(0, cx - 0.5 * w))
+		bbox_xyxy[1] = int(max(0, cy - 0.5 * h))
+		bbox_xyxy[2] = int(min(width_img - 1, cx + 0.5 * w))
+		bbox_xyxy[3] = int(min(height_img - 1, cy + 0.5 * h))
+		return bbox_xyxy
+
 	def run_detection(self):
 		"""Run detection model
 
@@ -202,12 +231,12 @@ class AICTrafficSafetyCamera(BaseCamera):
 		"""
 		# NOTE: Load dataset
 		self.data_loader_cfg["batch_size"] = self.detector_cfg["batch_size"]
-		self.init_data_loader(data_loader_cfg=self.data_loader_cfg)
+		data_loader = sorted(glob.glob(os.path.join(self.video_dir, self.data_cfg["type"])))
 
 		# NOTE: run detection
-		pbar = tqdm(total=len(self.data_loader), desc="Detection process: ")
+		pbar = tqdm(total=len(data_loader), desc="Detection process: ")
 		with torch.no_grad():  # phai them cai nay khong la bi memory leak
-			for video_path in self.data_loader:
+			for video_path in data_loader:
 				# Init parameter
 				basename       = os.path.basename(video_path)
 				basename_noext = os.path.splitext(basename)[0]
@@ -245,16 +274,7 @@ class AICTrafficSafetyCamera(BaseCamera):
 							bbox_xyxy     = [int(i) for i in instance.bbox]
 
 							# NOTE: crop the bounding box, add 40 or 1.2 scale
-							cx = 0.5 * bbox_xyxy[0] + 0.5 * bbox_xyxy[2]
-							cy = 0.5 * bbox_xyxy[1] + 0.5 * bbox_xyxy[3]
-							w = abs(bbox_xyxy[2] - bbox_xyxy[0])
-							w = min(w * 1.2, w + 40)
-							h = abs(bbox_xyxy[3] - bbox_xyxy[1])
-							h = min(h * 1.2, h + 40)
-							bbox_xyxy[0] = int(max(0, cx - 0.5 * w))
-							bbox_xyxy[1] = int(max(0, cy - 0.5 * h))
-							bbox_xyxy[2] = int(min(width_img - 1, cx + 0.5 * w))
-							bbox_xyxy[3] = int(min(height_img - 1, cy + 0.5 * h))
+							bbox_xyxy = self.scaleup_bbox(bbox_xyxy, height_img, width_img)
 							crop_image = images[index_b][bbox_xyxy[1]:bbox_xyxy[3], bbox_xyxy[0]:bbox_xyxy[2]]
 
 							result_dict = {
@@ -263,6 +283,7 @@ class AICTrafficSafetyCamera(BaseCamera):
 								'crop_img'   : crop_image,
 								'bbox'       : (bbox_xyxy[0], bbox_xyxy[1], bbox_xyxy[2], bbox_xyxy[3]),
 								'class_id'   : instance.class_label["train_id"],
+								'id'         : instance.class_label["id"],
 								'conf'       : instance.confidence,
 								'width_img'  : width_img,
 								'height_img' : height_img
@@ -283,6 +304,36 @@ class AICTrafficSafetyCamera(BaseCamera):
 				pbar.update(1)
 		pbar.close()
 
+	def run_write_final_result(self):
+		"""Group and write the final result
+
+		Returns:
+
+		"""
+		# dets_pkl_file = f"{os.path.join(self.data_writer['dst_crop_pkl'], self.name)}_dets_crop.pkl"
+		# dets_dict_feat = pickle.load(open(dets_pkl_file, 'rb'))
+		data_loader = sorted(glob.glob(os.path.join(self.data_writer_cfg['dst_crop_pkl'], "*.pkl")))
+
+		# DEBUG:
+		# print(self.data_writer_cfg['dst_crop_pkl'])
+
+		# NOTE: run writing
+		with open(os.path.join(self.outputs_dir, "final_result_s1.txt"), "w") as f_write:
+			for pkl_path in tqdm(data_loader, desc="Writing process"):
+				dets_crop = pickle.load(open(pkl_path, 'rb'))
+				for result_dict in dets_crop:
+					# <video_id>, <frame>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <class>
+					w = int(abs(result_dict["bbox"][2] - result_dict["bbox"][0]))
+					h = int(abs(result_dict["bbox"][3] - result_dict["bbox"][1]))
+					f_write.write(f"{int(result_dict['video_name'])},"
+								f"{int(result_dict['frame_id'])},"
+								f"{int(result_dict['bbox'][0])},"
+								f"{int(result_dict['bbox'][1])},"
+								f"{w},"
+								f"{h},"
+								f"{int(result_dict['id'])}\n")
+
+
 	def run(self):
 		"""Main run loop."""
 		self.run_routine_start()
@@ -292,6 +343,10 @@ class AICTrafficSafetyCamera(BaseCamera):
 			self.run_detection()
 			self.detector.clear_model_memory()
 			self.detector = None
+
+		# NOTE: run write final result
+		if self.process["function_write_final"]:
+			self.run_write_final_result()
 
 		self.run_routine_end()
 

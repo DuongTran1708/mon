@@ -28,7 +28,7 @@ data_loader:
   # Number of samples in one forward & backward pass.
 
 class_labels:
-  file: "class_labels.json"
+  file: "class_labels_s1.json"
   # Config file containing class_labels.
 
 detector:

@@ -200,7 +200,7 @@ class AICTrafficSafetyCameraS1(BaseCamera):
 
 	# MARK: Run
 
-	def scaleup_bbox(self, bbox_xyxy, height_img, width_img):
+	def scaleup_bbox(self, bbox_xyxy, height_img, width_img, ratio, padding):
 		"""Scale up 1.2% or +-40
 
 		Args:
@@ -214,9 +214,9 @@ class AICTrafficSafetyCameraS1(BaseCamera):
 		cx = 0.5 * bbox_xyxy[0] + 0.5 * bbox_xyxy[2]
 		cy = 0.5 * bbox_xyxy[1] + 0.5 * bbox_xyxy[3]
 		w = abs(bbox_xyxy[2] - bbox_xyxy[0])
-		w = min(w * 1.2, w + 40)
+		w = min(w * ratio, w + padding)
 		h = abs(bbox_xyxy[3] - bbox_xyxy[1])
-		h = min(h * 1.2, h + 40)
+		h = min(h * ratio, h + padding)
 		bbox_xyxy[0] = int(max(0, cx - 0.5 * w))
 		bbox_xyxy[1] = int(max(0, cy - 0.5 * h))
 		bbox_xyxy[2] = int(min(width_img - 1, cx + 0.5 * w))
@@ -274,7 +274,7 @@ class AICTrafficSafetyCameraS1(BaseCamera):
 							bbox_xyxy     = [int(i) for i in instance.bbox]
 
 							# NOTE: crop the bounding box, add 40 or 1.2 scale
-							bbox_xyxy = self.scaleup_bbox(bbox_xyxy, height_img, width_img)
+							bbox_xyxy = self.scaleup_bbox(bbox_xyxy, height_img, width_img, ratio=1.2, padding=40)
 							crop_image = images[index_b][bbox_xyxy[1]:bbox_xyxy[3], bbox_xyxy[0]:bbox_xyxy[2]]
 
 							result_dict = {
@@ -302,6 +302,10 @@ class AICTrafficSafetyCameraS1(BaseCamera):
 				del video_loader
 				pbar_video.close()
 				pbar.update(1)
+
+				# DEBUG: run 1 video
+				# break
+
 		pbar.close()
 
 	def run_write_final_result(self):

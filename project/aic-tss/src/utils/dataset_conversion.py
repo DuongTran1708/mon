@@ -198,8 +198,8 @@ def extract_groundtruths(num_class):
 		make_dir(folder_label_out)
 
 		# get width, height video
-		cam = cv2.VideoCapture(video_path)
-		width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))  # float `width`
+		cam    = cv2.VideoCapture(video_path)
+		width  = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))  # float `width`
 		height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))  # float `height`
 		cam.release()
 

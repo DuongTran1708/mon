@@ -23,12 +23,12 @@ START_TIME="$(date -u +%s.%N)"
 ###########################################################################################################
 
 # NOTE: DETECTION
-#echo "*********"
-#echo "DETECTION"
-#echo "*********"
-#python $DIR_SOURCE/main.py  \
-#    --detection  \
-#    --config $DIR_TSS"/configs/default.yaml"
+echo "*********"
+echo "DETECTION"
+echo "*********"
+python $DIR_SOURCE/main.py  \
+    --detection  \
+    --config $DIR_TSS"/configs/solution_1.yaml"
 
 # NOTE: DRAW DETECTION RESULT
 echo "*********************"
@@ -41,22 +41,22 @@ python $DIR_SOURCE/utils/drawing_result.py \
     --path_video_in "/media/sugarubuntu/DataSKKU3/3_Dataset/AI_City_Challenge/2023/Track_5/aicity2023_track5/videos/"
 
 # NOTE: WRITE FINAL RESULT
-#echo "*****************"
-#echo "WRITE FINAL RESULT"
-#echo "*****************"
-#python $DIR_SOURCE/main.py  \
-#    --write_final  \
-#    --config $DIR_TSS"/configs/default.yaml"
+echo "*****************"
+echo "WRITE FINAL RESULT"
+echo "*****************"
+python $DIR_SOURCE/main.py  \
+    --write_final  \
+    --config $DIR_TSS"/configs/default.yaml"
 
 # NOTE: DRAW FINAL RESULT
-#echo "*****************"
-#echo "DRAW FINAL RESULT"
-#echo "*****************"
-#python $DIR_SOURCE/utils/drawing_result.py \
-#    --draw_final  \
-#    --path_final "/media/sugarubuntu/DataSKKU3/3_Dataset/AI_City_Challenge/2023/Track_5/aicity2023_track5/outputs/final_result_s1.txt"  \
-#    --path_video_out "/media/sugarubuntu/DataSKKU3/3_Dataset/AI_City_Challenge/2023/Track_5/aicity2023_track5/outputs/final_debug/"  \
-#    --path_video_in "/media/sugarubuntu/DataSKKU3/3_Dataset/AI_City_Challenge/2023/Track_5/aicity2023_track5/videos/"
+echo "*****************"
+echo "DRAW FINAL RESULT"
+echo "*****************"
+python $DIR_SOURCE/utils/drawing_result.py \
+    --draw_final  \
+    --path_final "/media/sugarubuntu/DataSKKU3/3_Dataset/AI_City_Challenge/2023/Track_5/aicity2023_track5/outputs/final_result_s1.txt"  \
+    --path_video_out "/media/sugarubuntu/DataSKKU3/3_Dataset/AI_City_Challenge/2023/Track_5/aicity2023_track5/outputs/final_debug/"  \
+    --path_video_in "/media/sugarubuntu/DataSKKU3/3_Dataset/AI_City_Challenge/2023/Track_5/aicity2023_track5/videos/"
 
 ###########################################################################################################
 END_TIME="$(date -u +%s.%N)"

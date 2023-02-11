@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import argparse
+import pickle
 import sys
 import os
 import glob
@@ -86,6 +87,9 @@ def plot_one_box(x, img, color=None, label=None, line_thickness=None):
 		cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
 
 
+# NOTE: VISUALIZE FINAL RESULT ------------------------------------------------
+
+
 def read_result(gt_path):
 
 	labels = []
@@ -96,7 +100,7 @@ def read_result(gt_path):
 	return labels
 
 
-def draw_video(video_path_in, video_path_ou, label_video, colors, labels_name):
+def draw_final_video(video_path_in, video_path_ou, label_video, colors, labels_name):
 
 	# Read original information of input video
 	cam         = cv2.VideoCapture(video_path_in)
@@ -145,6 +149,7 @@ def draw_video(video_path_in, video_path_ou, label_video, colors, labels_name):
 def draw_final_result(args):
 	# initiate parameters
 	folder_out = args.path_video_out
+	folder_in  = args.path_video_in
 
 	# create output folder
 	make_dir(folder_out)
@@ -163,7 +168,7 @@ def draw_final_result(args):
 	labels_name = get_list_7_classses()
 
 	# Get list video
-	video_paths = sorted(glob.glob(os.path.join(args.path_video_in, "*.mp4")))
+	video_paths = sorted(glob.glob(os.path.join(folder_in, "*.mp4")))
 
 	# draw videos
 	for video_path in tqdm(video_paths, desc="Drawing final result"):
@@ -174,24 +179,97 @@ def draw_final_result(args):
 
 		# draw one video
 		label_video = [label for label in labels if label[0] == video_index]
-		draw_video(video_path, video_path_ou, label_video, colors, labels_name)
+		draw_final_video(video_path, video_path_ou, label_video, colors, labels_name)
 
 		# DEBUG: run 1 video
 		# break
+
+
+# NOTE: VISUALIZE PICKLE RESULT -----------------------------------------------
+
+
+def draw_pickle_video(video_path_in, video_path_ou, pkl_path, colors, labels_name):
+	# read pkl
+	dets_pkl = pickle.load(open(pkl_path, 'rb'))
+
+	# read video in
+	cam = cv2.VideoCapture(video_path_in)
+	width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))  # float `width`
+	height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))  # float `height`
+	fps = cam.get(cv2.CAP_PROP_FPS)
+	index_frame = 0
+
+	# generate new video
+	fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+	video  = cv2.VideoWriter(video_path_ou, fourcc, fps, (width, height))
+
+	while True:
+		index_frame = index_frame + 1
+
+		# reading from frame
+		ret, frame = cam.read()
+		if ret:
+			label_image = [label for label in dets_pkl if int(label["frame_id"]) == index_frame]
+
+			if len(label_image) >  0:
+				for label in label_image:
+					box = [
+						label["bbox"][0],
+						label["bbox"][1],
+						label["bbox"][2],
+						label["bbox"][3]
+					]
+					plot_one_box(
+						x     = box,
+						img   = frame,
+						color = colors[int(label["id"])],
+						label = labels_name[int(label["class_id"])]
+					)
+
+			# writing the extracted images
+			video.write(frame)
+		else:
+			break
+
+	# Release all space and windows once done
+	video.release()
+	cam.release()
 
 
 def draw_pickles(args):
 	# get the parameters
 	path_pickle_in = args.path_pickle_in
 	path_video_out = args.path_video_out
+	path_video_in  = args.path_video_in
 
 	# create output folder
 	make_dir(path_video_out)
 
+	# initial color
+	colors = []
+	for index, color in enumerate(AppleRGB):
+		# print(index, color, color.value)
+		colors.append(color.value)
+
+	# get list of label
+	labels_name = get_list_7_classses()
+
 	# get list pkl
 	pkl_paths = sorted(glob.glob(os.path.join(path_pickle_in, "*.pkl")))
 
-	# DEBUG:
+	# draw videos
+	for pkl_path in tqdm(pkl_paths, desc="Drawing pickle result"):
+		basename = os.path.basename(pkl_path)
+		basename_noext = os.path.splitext(basename)[0]
+		video_index = int(basename_noext)
+		video_path_in = os.path.join(path_video_in, f"{basename_noext}.mp4")
+		video_path_ou = os.path.join(path_video_out, f"{basename_noext}.mp4")
+
+		# draw one video
+		draw_pickle_video(video_path_in, video_path_ou, pkl_path, colors, labels_name)
+
+
+# NOTE: MAIN ------------------------------------------------------------------
 
 
 def main():

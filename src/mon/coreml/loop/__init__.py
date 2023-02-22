@@ -5,5 +5,7 @@
 
 from __future__ import annotations
 
-from mon.coreml.loop.inferrer import *
+import mon.coreml.loop.predictor
+import mon.coreml.loop.trainer
+from mon.coreml.loop.predictor import *
 from mon.coreml.loop.trainer import *

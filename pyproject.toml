@@ -9,7 +9,7 @@
 #
 [tool.poetry]
 name          = "mon"
-version       = "1.2.0"
+version       = "1.2.1"
 description   = "MON covers a wide range of research topics in computer vision, machine learning, and deep learning."
 license       = "MIT"
 authors       = [
@@ -27,7 +27,7 @@ keywords      = [
     "deep learning",
     "research",
 ]
-classifiers   = [
+classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -37,20 +37,95 @@ classifiers   = [
     "Programming Language :: Python :: 3 :: Only",
 ]
 packages = [
-    {include="mon", from="src"},
+    {include="mon",  from="src"    },
+    {include="supr", from="src/app"},
+    # { include="saicinpainting", from="src/lib/lama" },
 ]
-include  = []
-exclude  = []
+include = [
+    "CHANGELOG.md",
+    "GUIDELINE.md",
+    "README.md",
+    "install.sh",
+    "linux.yaml",
+    "mac.yaml",
+]
+exclude = []
 
 [tool.poetry.dependencies]
-python       = ">=3.10"
-# "mon-core"   = { path="src/mon-core",   develop=true }
-# "mon-image"  = { path="src/mon-image",  develop=true }
-# "mon-coreml" = { path="src/mon-coreml", develop=true }
-# "mon-vision" = { path="src/mon-vision", develop=true }
+python                = ">=3.10, <3.12"
+# # CUDA
+# pynvml                = "*"
+# # Documentation
+# markdown              = "*"
+# mkdocs                = "*"
+# mkdocstrings          = "*"
+# mkdocs-material       = "*"
+# sphinx                = "*"
+# sphinx-paramlinks     = "*"
+# # Image
+# albumentations        = "*"
+# ffmpeg-python         = "*"
+# opencv-python         = "*"
+# opencv-contrib-python = "*"
+# # Network
+# requests              = "*"
+# # Plot
+# matplotlib            = "*"
+# tensorboard           = "*"
+# # PyTorch
+# einops                = "*"
+# flopco-pytorch        = "*"
+# lightning             = ">=1.9.1"
+# pytorch-lightning     = ">=1.9.1"
+# piqa                  = "*"
+# pyiqa                 = "*"
+# torch                 = "*"
+# torchaudio            = "*"
+# torchmetrics          = "*"
+# torchvision           = "*"
+# # Ray
+# ray                   = "*"
+# # Scientific
+# filterpy              = "*"
+# numpy                 = "*"
+# scipy                 = "*"
+# scikit-learn          = "*"
+# # Syntax
+# multipledispatch      = "*"
+# mypy                  = "*"
+# protobuf              = "*"
+# pyhumps               = "*"
+# PyYAML                = "*"
+# sortedcontainers      = "*"
+# typing-extensions     = "*"
+# validators            = "*"
+# xmltodict             = "*"
+# # UI
+# PyQt6                 = "*"
+# rich                  = "*"
+# tqdm                  = "*"
 
-# [tool.poetry.group.dev.dependencies]
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+easydict       = "*"
+hydra-core     = "*"
+kornia         = "=0.5.0"
+mediapipe      = "*"
+mmcv-full      = "=1.7.1"
+openmim        = "*"
+packaging      = "*"
+pandas         = "*"
+saicinpainting = {path="src/lib/lama"  }
+tabulate       = "*"
+tensorflow     = "*"
+thop           = "*"
+torchfile      = "*"
+ultralytics    = {path="src/lib/yolov8"}
+webdataset     = "*"
 
 [build-system]
-requires        = ["poetry-core"]
-build-backend   = "poetry.core.masonry.api"
+requires      = ["poetry-core>=1.2.0"]
+build-backend = "poetry.core.masonry.api"
+# build-backend = "setuptools.build_meta"

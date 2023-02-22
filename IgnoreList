@@ -53,6 +53,7 @@ DfsrPrivate
 
 *.cache
 *.lock
-pycharm.env
 /data
 \data
+poetry.lock
+pycharm.env

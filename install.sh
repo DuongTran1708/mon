@@ -1,14 +1,17 @@
 #!/bin/bash
 
-# Install:
+# Usage:
 # chmod +x install.sh
 # conda init bash
 # ./install.sh
+#
+# or:
+# bash -l install.sh
+# zsh -i install.sh
 
 script_path=$(readlink -f "$0")
 current_dir=$(dirname "$script_path")
 root_dir=$current_dir
-# root_dir=$(dirname "$current_dir")
 
 # Add channels
 echo -e "\nAdding channels"
@@ -17,14 +20,10 @@ conda config --append channels nvidia
 conda config --append channels pytorch
 echo -e "... Done"
 
-# Install `mamba`
-echo -e "\nInstalling 'mamba':"
-conda install -c conda-forge mamba --y
-echo -e "... Done"
-
 # Update 'base' env
 echo -e "\nUpdating 'base' environment:"
-mamba update --a --y
+conda init bash
+conda update --a --y
 pip install --upgrade pip
 echo -e "... Done"
 
@@ -33,14 +32,14 @@ case "$OSTYPE" in
   linux*)
     echo -e "\nLinux / WSL"
     # Create `mon` env
-    env_yml_path="${current_dir}/linux.yml"
-    if { mamba env list | grep 'mon'; } >/dev/null 2>&1; then
+    env_yml_path="${current_dir}/linux.yaml"
+    if { conda env list | grep 'mon'; } >/dev/null 2>&1; then
       echo -e "\nUpdating 'mon' environment:"
-      mamba env update --name mon -f "${env_yml_path}"
+      conda env update --name mon -f "${env_yml_path}"
       echo -e "... Done"
     else
       echo -e "\nCreating 'mon' environment:"
-      mamba env create -f "${env_yml_path}"
+      conda env create -f "${env_yml_path}"
       echo -e "... Done"
     fi
     eval -e "$(conda shell.bash hook)"
@@ -55,14 +54,14 @@ case "$OSTYPE" in
     export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
     export GRPC_PYTHON_BUILD_SYSTEM_ZLIB=1
     # Create `mon` env
-    env_yml_path="${current_dir}/mac.yml"
-    if { mamba env list | grep 'mon'; } >/dev/null 2>&1; then
+    env_yml_path="${current_dir}/mac.yaml"
+    if { conda env list | grep 'mon'; } >/dev/null 2>&1; then
       echo -e "\nUpdating 'mon' environment:"
-      mamba env update --name mon -f "${env_yml_path}"
+      conda env update --name mon -f "${env_yml_path}"
       echo -e "... Done"
     else
       echo -e "\nCreating 'mon' environment:"
-      mamba env create -f "${env_yml_path}"
+      conda env create -f "${env_yml_path}"
       echo -e "... Done"
     fi
     eval "$(conda shell.bash hook)"
@@ -74,17 +73,17 @@ case "$OSTYPE" in
   win*)
     echo -e "\nWindows"
     # Create `mon` env
-    env_yml_path="${current_dir}/linux.yml"
-    if { mamba env list | grep 'mon'; } >/dev/null 2>&1; then
+    env_yml_path="${current_dir}/linux.yaml"
+    if { conda env list | grep 'mon'; } >/dev/null 2>&1; then
       echo -e "\nUpdating 'mon' environment:"
-      mamba env update --name mon -f "${env_yml_path}"
+      conda env update --name mon -f "${env_yml_path}"
       echo -e "... Done"
     else
       echo -e "\nCreating 'mon' environment:"
-      mamba env create -f "${env_yml_path}"
+      conda env create -f "${env_yml_path}"
       echo -e "... Done"
     fi
-    eval "$(mamba shell.bash hook)"
+    eval "$(conda shell.bash hook)"
     conda activate mon
     pip install --upgrade pip
     # Remove `cv2/plugin` folder:
@@ -107,9 +106,13 @@ case "$OSTYPE" in
     ;;
 esac
 
-# Install 'mon' package
+# Install/upgrade 'mon' package
+eval "$(conda shell.bash hook)"
 conda activate mon
-poetry install
+poetry install --with dev
+pip install -U openmim
+mim install mmcv-full==1.7.0
+pip install --force-reinstall --no-cache -U opencv-python==4.5.5.62
 
 # Set environment variables
 # shellcheck disable=SC2162
@@ -143,4 +146,3 @@ echo -e "... Done"
 
 # Cleanup everything
 conda clean --a --y
-conda activate mon

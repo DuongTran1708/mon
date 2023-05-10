@@ -11,7 +11,7 @@ __all__ = [
 
 from torch.nn import Sequential
 
-from mon.coreml.layer import base
+from mon.coreml.layer.base import *
 from mon.coreml.layer.common import *
 from mon.coreml.layer.specific import *
 
@@ -73,11 +73,13 @@ def parse_model(
             except:
                 pass
         
-        if isinstance(m, base.HeadLayerParsingMixin):
+        if issubclass(m, HeadLayerParsingMixin):
             args, ch = m.parse_layer(f=f, args=args, nc=nc, ch=ch, hparams=hparams)
-        elif isinstance(m, base.LayerParsingMixin):
+        else:
             args, ch = m.parse_layer(f=f, args=args, ch=ch, hparams=hparams)
-        
+        if i == 0:
+            ch = ch[1:]
+
         # Create layers
         m_    = Sequential(*[m(*args) for _ in range(n)]) if n > 1 else m(*args)
         m_.i  = i

@@ -24,15 +24,16 @@ import torch
 from torch import nn
 from torch.nn import parallel
 
-from mon.coreml import data as md, layer, loss as ml, metric as mm
-from mon.foundation import config, console, error_console, pathlib, rich
+from mon.coreml import data as mdata, layer, loss as mloss, metric as mmetric
+from mon.foundation import (
+    config as mconfig, console, error_console, pathlib, rich,
+)
 from mon.globals import (
-    LOSSES, LR_SCHEDULERS, METRICS, ModelPhase, MODELS, OPTIMIZERS,
-    ZOO_DIR,
+    LOSSES, LR_SCHEDULERS, METRICS, ModelPhase, MODELS, OPTIMIZERS, ZOO_DIR,
 )
 
 StepOutput  = lightning.pytorch.utilities.types.STEP_OUTPUT
-EpochOutput = lightning.pytorch.utilities.types.EPOCH_OUTPUT
+EpochOutput = Any  # lightning.pytorch.utilities.types.EPOCH_OUTPUT
 
 
 # region Checkpoint
@@ -165,18 +166,18 @@ def match_state_dicts(
 
 
 def strip_optimizer(weight_file: str, new_file: str | None = None):
-    """Strip the optimizer from a saved weight file to finalize the training
+    """Strip the optimizer from a saved weights file to finalize the training
     process.
     
     Args:
-        weight_file: A PyTorch saved weight filepath.
+        weight_file: A PyTorch saved weights filepath.
         new_file: A filepath to save the stripped weights. If :param:`new_file`
             is given, save the weights as a new file. Otherwise, overwrite the
             :param:`weight_file`.
     """
     if not pathlib.Path(weight_file).is_weights_file():
         raise ValueError(
-            f"weight_file must be a valid path to a weight file, but got "
+            f"weight_file must be a valid path to a weights file, but got "
             f"{pathlib}."
         )
     
@@ -205,7 +206,7 @@ def attempt_load(
     model      : nn.Module | Model,
     weights    : dict | pathlib.Path,
     name       : str  | None                = None,
-    cfg        : dict | pathlib.Path | None = None,
+    config     : dict | pathlib.Path | None = None,
     fullname   : str  | None                = None,
     num_classes: int  | None                = None,
     phase      : str                        = "inference",
@@ -219,9 +220,9 @@ def attempt_load(
     
     Args:
         model: A PyTorch :class:`nn.Module` or a :class:`Model`.
-        weights: A weight dictionary or a checkpoint filepath.
+        weights: Weights dictionary or a checkpoint filepath.
         name: A name of the model.
-        cfg: A configuration dictionary or a YAML filepath containing the
+        config: A configuration dictionary or a YAML filepath containing the
             building configuration of the model.
         fullname: An optional fullname of the model, in other words,
             a model's base name + its variant + a training dataset name.
@@ -239,12 +240,12 @@ def attempt_load(
         A :class:`Model` object.
     """
     # Get model's configuration
-    if cfg is not None:
-        cfg = config.load_config(cfg=cfg)
+    if config is not None:
+        config = config.load_config(config=config)
     
     # Get model
     if model is None:
-        if name is None and cfg is None:
+        if name is None and config is None:
             if debugging:
                 raise RuntimeError
             else:
@@ -253,7 +254,7 @@ def attempt_load(
             model: Model = MODELS.build(
                 name        = name,
                 fullname    = fullname,
-                cfg         = cfg,
+                config      = config,
                 num_classes = num_classes,
                 phase       = phase,
             )
@@ -269,7 +270,7 @@ def attempt_load(
         model = model.load_from_checkpoint(
             checkpoint_path = weights,
             name            = name,
-            cfg             = cfg,
+            cfg             = config,
             num_classes     = num_classes,
             phase           = phase,
         )
@@ -347,7 +348,7 @@ def load_state_dict_from_path(
         and (model_dir is None or not model_dir.is_dir()):
         raise ValueError(f"'model_dir' must be defined. But got: {model_dir}.")
     
-    save_weight = ""
+    save_weight = pathlib.Path()
     if file_name:
         save_weight = model_dir / file_name
     
@@ -407,17 +408,18 @@ class Model(lightning.LightningModule, ABC):
     """The base class for all machine learning models.
     
     Attributes:
-        cfgs: A dictionary containing all configurations of the model.
+        configs: A dictionary containing all configurations of the model.
         zoo: A dictionary containing all pretrained weights of the model.
         
     Args:
-        cfg: The model's configuration that is used to build the model. Any of:
-            - A dictionary.
-            - A key in the :attr:`cfgs`.
-            - A file name. Ex: 'alexnet.yaml'.
-            - A path to a .yaml file. Ex: '../cfgs/alexnet.yaml'.
-            - None, define each layer manually.
-        hparams: Layer's hyperparameters. They are used to change the values of
+        config: The model's configuration that is used to build the model.
+            Any of:
+                - A dictionary.
+                - A key in the :attr:`cfgs`.
+                - A file name. Ex: 'alexnet.yaml'.
+                - A path to a .yaml file. Ex: '../cfgs/alexnet.yaml'.
+                - None, define each layer manually.
+        hparams: Model's hyperparameters. They are used to change the values of
             :param:`args`. Usually used in grid search or random search during
             training. Defaults to None.
         channels: The first layer's input channel. Defaults to 3.
@@ -426,18 +428,19 @@ class Model(lightning.LightningModule, ABC):
             parsing.
         classlabels: A :class:`mon.coreml.data.label.ClassLabels` object that
             contains all labels in the dataset. Defaults to None.
-        weight: The model's weight. Any of:
+        weights: The model's weights. Any of:
             - A state dictionary.
             - A key in the :attr:`zoo`. Ex: 'yolov8x-det-coco'.
-            - A path to a weight or ckpt file.
+            - A path to a weights file or ckpt file.
         name: The model's name. Defaults to None mean it will be
             :attr:`self.__class__.__name__`. .
         variant: The model's variant. For example, :param:`name` is 'yolov8' and
             :param:`variant` is 'yolov8x'. Defaults to None mean it will be same
             as :param:`name`.
-        fullname: A full model name to save the checkpoint or weight. It should
-            have the following format: {name}/{variant}-{dataset}-{postfix}.
-            Defaults to None mean it will be same as :param:`name`.
+        fullname: The model's fullname to save the checkpoint or weights. It
+            should have the following format:
+            {name}/{variant}-{dataset}-{postfix}. Defaults to None mean it will
+            be same as :param:`name`.
         root: The root directory of the model. It is used to save the model
             checkpoint during training: {root}/{project}/{fullname}.
         project: A project name. Defaults to None.
@@ -450,47 +453,46 @@ class Model(lightning.LightningModule, ABC):
         verbose: Verbosity. Defaults to True.
     """
     
-    cfgs    = {}
+    configs = {}
     zoo     = {}
     
     def __init__(
         self,
-        cfg        : Any                   = None,
-        hparams    : dict | None           = None,
-        channels   : int                   = 3,
-        num_classes: int  | None           = None,
-        classlabels: md.ClassLabels | None = None,
-        weight     : Any                   = None,
+        config     : Any                      = None,
+        hparams    : dict | None              = None,
+        channels   : int                      = 3,
+        num_classes: int  | None              = None,
+        classlabels: mdata.ClassLabels | None = None,
+        weights    : Any                      = None,
         # For saving/loading
-        name       : str  | None           = None,
-        variant    : str  | None           = None,
-        fullname   : str  | None           = None,
-        root       : pathlib.Path          = pathlib.Path(),
-        project    : str  | None           = None,
-        # For training
-        phase      : ModelPhase | str      = ModelPhase.TRAINING,
-        loss       : Any                   = None,
-        metrics    : Any                   = None,
-        optimizers : Any                   = None,
-        debug      : dict | None           = None,
-        verbose    : bool                  = True,
+        name       : str  | None              = None,
+        variant    : str  | None              = None,
+        fullname   : str  | None              = None,
+        root       : pathlib.Path             = pathlib.Path(),
+        project    : str  | None              = None,
+        # For training                        
+        phase      : ModelPhase | str         = ModelPhase.TRAINING,
+        loss       : Any                      = None,
+        metrics    : Any                      = None,
+        optimizers : Any                      = None,
+        debug      : dict | None              = None,
+        verbose    : bool                     = True,
         *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
-        self.name          = name
-        self.variant       = variant
+        self.config        = config
+        #
+        self.hyperparams   = hparams
+        self.channels      = channels or self.channels
+        self.num_classes   = num_classes
+        self.weights       = weights
+        self.name          = name     or self.name
+        self.variant       = variant  or self.variant
         self.fullname      = fullname
         self.project       = project
         self.root          = root
-        
-        self.cfg           = cfg
-        self.hyperparams   = hparams
-        self.channels      = channels
-        self.num_classes   = num_classes
-        self.weight        = weight
-        self.classlabels   = md.ClassLabels.from_value(classlabels) \
-                                if classlabels is not None else None
-        
+        self.classlabels   = mdata.ClassLabels.from_value(classlabels) \
+                             if classlabels is not None else None
         self.loss          = loss
         self.train_metrics = metrics
         self.val_metrics   = metrics
@@ -499,23 +501,17 @@ class Model(lightning.LightningModule, ABC):
         self.debug         = debug
         self.verbose       = verbose
         self.epoch_step    = 0
-        
         # Define model
-        # self.model = None
-        # self.save  = None
-        # self.info  = None
         self.model, self.save, self.info = self.parse_model()
-        
         # Load weights
-        if self.weight:
-            self.load_weight()
+        if self.weights:
+            self.load_weights()
         else:
-            self.apply(self.init_weight)
+            self.apply(self.init_weights)
         self.print_info()
-        
         # Set phase to freeze or unfreeze layers
         self.phase = phase
-    
+
     @property
     def name(self) -> str:
         return self._name
@@ -533,7 +529,13 @@ class Model(lightning.LightningModule, ABC):
     @fullname.setter
     def fullname(self, fullname: str | None = None):
         if fullname is None or fullname == "":
-            fullname = self.name
+            if self.variant is not None:
+                if self.name in self.variant:
+                    fullname = self.variant
+                else:
+                    fullname = f"{self.name}-{self.variant}"
+            else:
+                fullname = self.name
         self._fullname = fullname
     
     @property
@@ -543,7 +545,7 @@ class Model(lightning.LightningModule, ABC):
     @root.setter
     def root(self, root: Any):
         if root is None:
-            root = pathlib.Path() / "run" / "train"
+            root = pathlib.Path() / "run"
         else:
             root = pathlib.Path(root)
         self._root = root
@@ -554,11 +556,11 @@ class Model(lightning.LightningModule, ABC):
             self._root = self._root / self.fullname
         
         self._debug_dir = self._root / "debug"
-        self._ckpt_dir  = self._root / "weight"
+        self._ckpt_dir  = self._root / "weights"
     
     @property
     @abstractmethod
-    def cfg_dir(self) -> pathlib.Path:
+    def config_dir(self) -> pathlib.Path:
         pass
     
     @property
@@ -596,30 +598,32 @@ class Model(lightning.LightningModule, ABC):
         return ZOO_DIR / self.name
     
     @property
-    def cfg(self) -> dict | None:
-        return self._cfg
+    def config(self) -> dict | None:
+        return self._config
     
-    @cfg.setter
-    def cfg(self, cfg: Any = None):
+    @config.setter
+    def config(self, config: Any = None):
         variant = None
-        if isinstance(cfg, str) and cfg in self.cfgs:
-            variant = str(cfg)
-            cfg     = self.cfgs[cfg]
-        elif isinstance(cfg, str) and ".yaml" in cfg:
-            cfg     = self.cfg_dir / cfg
-            variant = str(cfg.stem)
-        elif isinstance(cfg, pathlib.Path):
-            variant = str(cfg.stem)
-        elif isinstance(cfg, dict):
-            variant = cfg.get("variant", None)
-        elif cfg is None:
+        if isinstance(config, str) and config in self.configs:
+            variant = str(config)
+            config  = self.configs[config]
+        elif isinstance(config, str) and ".yaml" in config:
+            config  = self.config_dir / config
+            variant = str(config.stem)
+        elif isinstance(config, pathlib.Path):
+            variant = str(config.stem)
+        elif isinstance(config, dict):
+            variant = config.get("variant", None)
+        elif config is None:
             pass
         else:
             raise TypeError
             
-        self._cfg    = config.load_config(cfg=cfg) if cfg is not None else None
-        self.variant = self.variant or variant
-    
+        self._config  = mconfig.load_config(config=config) if config is not None else None
+        self.channels = self._config.get("channels", None)
+        self.name     = self._config.get("name",     None)
+        self.variant  = variant
+        
     @property
     def params(self) -> int:
         if self.info is not None:
@@ -629,13 +633,13 @@ class Model(lightning.LightningModule, ABC):
             return 0
     
     @property
-    def weight(self) -> pathlib.Path | dict:
+    def weights(self) -> pathlib.Path | dict:
         return self._weights
     
-    @weight.setter
-    def weight(self, weights: Any = None):
+    @weights.setter
+    def weights(self, weights: Any = None):
         if isinstance(weights, str) and weights in self.zoo:
-            weights = pathlib.Path(self.zoo[weights])
+            weights = self.zoo[weights]
         elif isinstance(weights, pathlib.Path):
             pass
         elif isinstance(weights, dict):
@@ -651,8 +655,8 @@ class Model(lightning.LightningModule, ABC):
         self._phase = ModelPhase.from_value(value=phase)
         if self._phase is ModelPhase.TRAINING:
             self.unfreeze()
-            if self.cfg is not None:
-                freeze = self.cfg.get("freeze", None)
+            if self.config is not None:
+                freeze = self.config.get("freeze", None)
                 if isinstance(freeze, list):
                     for k, v in self.model.named_parameters():
                         if any(x in k for x in freeze):
@@ -661,15 +665,17 @@ class Model(lightning.LightningModule, ABC):
             self.freeze()
     
     @property
-    def loss(self) -> ml.Loss | None:
+    def loss(self) -> mloss.Loss | None:
         return self._loss
     
     @loss.setter
     def loss(self, loss: Any):
-        if isinstance(loss, ml.Loss | nn.Module):
+        if isinstance(loss, mloss.Loss | nn.Module):
             self._loss = loss
-        elif isinstance(loss, str | dict):
-            self._loss = LOSSES.build_instances(cfg=loss)
+        elif isinstance(loss, str):
+            self._loss = LOSSES.build(name=loss)
+        elif isinstance(loss, dict):
+            self._loss = LOSSES.build(config=loss)
         else:
             self._loss = None
         
@@ -678,7 +684,7 @@ class Model(lightning.LightningModule, ABC):
             # self._loss.cuda()
     
     @property
-    def train_metrics(self) -> list[mm.Metric] | None:
+    def train_metrics(self) -> list[mmetric.Metric] | None:
         return self._train_metrics
     
     @train_metrics.setter
@@ -704,64 +710,58 @@ class Model(lightning.LightningModule, ABC):
         
         self._train_metrics = self.create_metrics(metrics=metrics)
         # This is a simple hack since LightningModule needs the
-        # metric to be defined with self.<metric>. Here we dynamically
-        # add the metric attribute to the class.
+        # metric to be defined with self.<metric>. So, here we
+        # dynamically add the metric attribute to the class.
         if self._train_metrics:
             for metric in self._train_metrics:
-                name = f"train_{metric.name}"
+                name = f"train/{metric.name}"
                 setattr(self, name, metric)
     
     @property
-    def val_metrics(self) -> list[mm.Metric] | None:
+    def val_metrics(self) -> list[mmetric.Metric] | None:
         return self._val_metrics
     
     @val_metrics.setter
     def val_metrics(self, metrics: Any):
-        """Assign val metrics. See Also: :meth:`self.train_metrics()`."""
+        """Assign val metrics. Similar to: :meth:`self.train_metrics()`."""
         if isinstance(metrics, dict) and "val" in metrics:
             metrics = metrics.get("val", metrics)
         
         self._val_metrics = self.create_metrics(metrics)
-        # This is a simple hack since LightningModule needs the
-        # metric to be defined with self.<metric>. Here we dynamically
-        # add the metric attribute to the class.
         if self._val_metrics:
             for metric in self._val_metrics:
-                name = f"val_{metric.name}"
+                name = f"val/{metric.name}"
                 setattr(self, name, metric)
     
     @property
-    def test_metrics(self) -> list[mm.Metric] | None:
+    def test_metrics(self) -> list[mmetric.Metric] | None:
         return self._test_metrics
     
     @test_metrics.setter
     def test_metrics(self, metrics: Any):
-        """Assign test metrics. See Also: :meth:`self.train_metrics()`."""
+        """Assign test metrics. Similar to: :meth:`self.train_metrics()`."""
         if isinstance(metrics, dict) and "test" in metrics:
             metrics = metrics.get("test", metrics)
         
         self._test_metrics = self.create_metrics(metrics)
-        # This is a simple hack since LightningModule needs the
-        # metric to be defined with self.<metric>. Here we dynamically
-        # add the metric attribute to the class.
         if self._test_metrics:
             for metric in self._test_metrics:
-                name = f"test_{metric.name}"
+                name = f"test/{metric.name}"
                 setattr(self, name, metric)
     
     @staticmethod
     def create_metrics(metrics: Any):
-        if isinstance(metrics, mm.Metric):
+        if isinstance(metrics, mmetric.Metric):
             if getattr(metrics, "name", None) is None:
                 metrics.name = humps.depascalize(
                     humps.pascalize(metrics.__class__.__name__)
                 )
             return [metrics]
         elif isinstance(metrics, dict):
-            return [METRICS.build(cfg=metrics)]
+            return [METRICS.build(config=metrics)]
         elif isinstance(metrics, list | tuple):
             return [
-                METRICS.build(cfg=metric)
+                METRICS.build(config=metric)
                 if isinstance(metric, dict) else metric
                 for metric in metrics
             ]
@@ -795,6 +795,10 @@ class Model(lightning.LightningModule, ABC):
     
     # Initialize Model
     
+    def create_dir(self):
+        for path in [self.root, self.ckpt_dir, self.debug_dir]:
+            path.mkdir(parents=True, exist_ok=True)
+    
     def parse_model(self) -> tuple[nn.Sequential, list[int], list[dict]]:
         """Build the model. You have 2 options for building a model: (1) define
         each layer manually, or (2) build model automatically from a config
@@ -816,68 +820,84 @@ class Model(lightning.LightningModule, ABC):
             A list of layer index to save the features during forward pass.
             A list of layer's info for debugging.
         """
-        if not isinstance(self.cfg, dict):
-            raise TypeError(f"cfg must be a dictionary, but got {self.cfg}.")
+        if not isinstance(self.config, dict):
+            raise TypeError(f"config must be a dictionary, but got {self.config}.")
+        if "backbone" not in self.config and "head" not in self.config:
+            raise ValueError("config must contain 'backbone' and 'head' keys.")
         
-        console.log(f"Parsing model from cfg.")
+        console.log(f"Parsing model from config.")
         
-        if "channels" in self.cfg:
-            channels = self.cfg["channels"]
+        # Name
+        if "name" in self.config:
+            self.name = self.name or self.config["name"]
+        
+        # Variant
+        if "variant" in self.config:
+            self.variant = self.variant or self.config["variant"]
+        
+        # Channels
+        if "channels" in self.config:
+            channels = self.config["channels"]
             if channels != self.channels:
-                self.cfg["channels"] = self.channels
+                self.config["channels"] = self.channels
                 console.log(
                     f"Overriding model.yaml channels={channels} with "
-                    f"num_classes={self.channels}."
+                    f"channels={self.channels}."
                 )
         
+        # Num_classes
         num_classes = self.num_classes
-        if isinstance(self.classlabels, md.ClassLabels):
+        if isinstance(self.classlabels, mdata.ClassLabels):
             num_classes = num_classes or self.classlabels.num_classes()
-        if isinstance(self.weight, dict) and "num_classes" in self.weight:
-            num_classes = num_classes or self.weight["num_classes"]
+        if isinstance(self.weights, dict) and "num_classes" in self.weights:
+            num_classes = num_classes or self.weights["num_classes"]
         self.num_classes = num_classes
         
-        if "num_classes" in self.cfg:
-            num_classes = self.cfg["num_classes"]
+        if "num_classes" in self.config:
+            num_classes = self.config["num_classes"]
             if num_classes != self.num_classes:
-                self.cfg["num_classes"] = self.num_classes
+                self.config["num_classes"] = self.num_classes
                 console.log(
                     f"Overriding model.yaml num_classes={num_classes} with "
                     f"num_classes={self.num_classes}."
                 )
+        else:
+            self.config["num_classes"] = num_classes
         
-        if "backbone" not in self.cfg and "head" not in self.cfg:
-            raise ValueError("cfg must contain 'backbone' and 'head' keys.")
-
+        # Parsing
         model, save, info = layer.parse_model(
-            d       = self.cfg,
+            d       = self.config,
             ch      = [self.channels],
             hparams = self.hyperparams,
         )
         return model, save, info
     
     @abstractmethod
-    def init_weight(self, model: nn.Module):
-        """Initialize model's weight."""
+    def init_weights(self, model: nn.Module):
+        """Initialize model's weights."""
         pass
     
-    def load_weight(self):
+    def load_weights(self):
         """Load weights. It only loads the intersection layers of matching keys
         and shapes between the current model and weights.
         """
-        if isinstance(self.weight, dict | pathlib.Path):
+        if isinstance(self.weights, dict | pathlib.Path):
+            if "filename" in self.weights:
+                weights = self.zoo_dir / self.weights["filename"]
+            else:
+                weights = self.weights
             self.zoo_dir.mkdir(parents=True, exist_ok=True)
             self.model = attempt_load(
                 model     = self.model,
-                weights   = self.weight,
+                weights   = weights,
                 strict    = False,
                 model_dir = self.zoo_dir,
             )
             if self.verbose:
-                console.log(f"Load weight from: {self.weight}!")
+                console.log(f"Load weights from: {self.weights}!")
         else:
             error_console.log(
-                f"[yellow]Cannot load from weights: {self.weight}!"
+                f"[yellow]Cannot load from weights: {self.weights}!"
             )
     
     def configure_optimizers(self):
@@ -917,7 +937,7 @@ class Model(lightning.LightningModule, ABC):
             if optimizer is None:
                 raise ValueError(f"optimizer must be defined.")
             if isinstance(optimizer,  dict):
-                optimizer = OPTIMIZERS.build(net=self, cfg=optimizer)
+                optimizer = OPTIMIZERS.build(net=self, config=optimizer)
             optim["optimizer"] = optimizer
             
             # Define learning rate scheduler
@@ -931,7 +951,7 @@ class Model(lightning.LightningModule, ABC):
                 if isinstance(scheduler,  dict):
                     scheduler = LR_SCHEDULERS.build(
                         optimizer = optim["optimizer"],
-                        cfg       = scheduler
+                        config= scheduler
                     )
                 lr_scheduler["scheduler"] = scheduler
             
@@ -965,7 +985,7 @@ class Model(lightning.LightningModule, ABC):
         """
         pred = self.forward(input=input, *args, **kwargs)
         # features = None
-        if isinstance(pred, (list, tuple)):
+        if isinstance(pred, list | tuple):
             # features = pred[0:-1]
             pred = pred[-1]
         loss = self.loss(pred, target) if self.loss else None
@@ -1018,18 +1038,15 @@ class Model(lightning.LightningModule, ABC):
         x     = input
         y, dt = [], []
         for m in self.model:
-            
             # console.log(f"{m.i}")
-            
-            if m.f != -1:  # Get features from previous layer
+            if m.f != -1:  # Get features from the previous layer
                 if isinstance(m.f, int):
                     x = y[m.f]  # From directly previous layer
                 else:
                     x = [x if j == -1 else y[j] for j in m.f]  # From earlier layers
-            
             x = m(x)  # pass features through current layer
             y.append(x if m.i in self.save else None)
-        
+
         if out_index > -1 and out_index in self.save:
             output = y[out_index]
         else:
@@ -1040,18 +1057,16 @@ class Model(lightning.LightningModule, ABC):
     
     def on_fit_start(self):
         """Called at the beginning of fit."""
-        for path in [self.root, self.ckpt_dir, self.debug_dir]:
-            path.mkdir(parents=True, exist_ok=True)
-    
+        self.create_dir()
+
     def on_train_epoch_start(self):
         """Called in the training loop at the beginning of the epoch."""
         self.epoch_step = 0
-
+    
     def training_step(
         self,
-        batch        : Any,
-        batch_idx    : int,
-        optimizer_idx: int,
+        batch    : Any,
+        batch_idx: int,
         *args, **kwargs
     ) -> StepOutput | None:
         """Here you compute and return the training loss, and some additional
@@ -1061,8 +1076,6 @@ class Model(lightning.LightningModule, ABC):
             batch: The output of :class:`~torch.utils.data.DataLoader`. It can
                 be a tensor, tuple or list.
             batch_idx: An integer displaying index of this batch.
-            optimizer_idx: When using multiple optimizers, this argument will
-                also be present.
             
         Return:
             Any of:
@@ -1071,100 +1084,87 @@ class Model(lightning.LightningModule, ABC):
                   'loss'.
                 - None, training will skip to the next batch.
         """
+        # Forward
         input, target, extra = batch[0], batch[1], batch[2:]
         pred, loss = self.forward_loss(
             input  = input,
             target = target,
             *args, **kwargs
         )
-        return {
-            "loss"  : loss,
-            "input" : input,
-            "target": target,
-            "pred"  : pred
-        }
-    
-    def training_step_end(self, step_output: StepOutput) -> StepOutput:
-        """Use this when training with dp because :meth:`training_step` will
-        operate on only part of the batch. However, this is still optional and
-        only needed for things like softmax or NCE loss.
-        
-        Note:
-            If you later switch to ddp or some other mode, this will still be
-            called so that you don't have to change your code.
-        
-        Args:
-            step_output: What you return in `training_step` for each batch part.
-        """
-        if not isinstance(step_output,  dict):
-            return step_output
-        
-        # Gather results
-        # For DDP strategy, gather outputs from multiple devices
-        if self.trainer.num_devices > 1:
-            step_output = self.all_gather(step_output)
-        
-        loss   = step_output["loss"]    # losses from each device
-        input  = step_output["input"]   # images from each device
-        target = step_output["target"]  # ground-truths from each device
-        pred   = step_output["pred"]    # predictions from each device
-        
-        # Tensors
-        if self.trainer.num_devices > 1:
-            input  = input.flatten(start_dim=0, end_dim=1)
-            target = target.flatten(start_dim=0, end_dim=1)
-            pred   = pred.flatten(start_dim=0, end_dim=1)
-        
         # Loss
-        loss = loss.mean() if loss is not None else None
-        self.ckpt_log_scalar(f"checkpoint/loss/train_step", loss)
-        # self.tb_log(f"{loss_tag}", loss, "step")
-        
-        # Metrics
+        self.log(
+            name           = f"train/loss",
+            value          = loss,
+            prog_bar       = False,
+            logger         = True,
+            on_step        = True,
+            on_epoch       = True,
+            sync_dist      = True,
+            rank_zero_only = True,
+            batch_size     = 1,
+        )
+        # Metric
         if self.train_metrics:
             for i, metric in enumerate(self.train_metrics):
                 value = metric(pred, target)
-                self.ckpt_log_scalar(f"checkpoint/{metric.name}/train_step", value, True)
-                # self.tb_log(f"{metric.name}/train_step", value, "step")
-        
+                self.log(
+                    name           = f"train/{metric.name}",
+                    value          = value,
+                    prog_bar       = False,
+                    logger         = True,
+                    on_step        = True,
+                    on_epoch       = True,
+                    sync_dist      = True,
+                    rank_zero_only = True,
+                    batch_size     = 1,
+                )
+        # Debug
         self.epoch_step += 1
-        return {
-            "loss": loss,
-            # "input" : input,
-            # "target": target,
-            # "pred"  : pred,
-        }
-    
-    def training_epoch_end(self, outputs: EpochOutput):
-        """Called at the end of the training epoch with the outputs of all
-        training steps. Use this in case you need to do something with all the
-        outputs returned by :meth:`training_step`.
-        
-        Args:
-            outputs: A list of outputs you defined in :meth:`training_step`.
+        return loss
+
+    def on_train_epoch_end(self):
+        """Called in the training loop at the very end of the epoch."""
+        for i, metric in enumerate(self.train_metrics):
+            # value = metric.compute()
+            metric.reset()
         """
         # Loss
-        loss = torch.stack([x["loss"] for x in outputs]).mean()
-        self.ckpt_log_scalar(f"checkpoint/loss/train_epoch", loss)
-        self.tb_log_scalar(f"loss/train_epoch", loss, "epoch")
-        
+        loss = torch.stack([x["loss"] for x in epoch_output]).mean()
+        if self.trainer.is_global_zero:
+            self.log(
+                name      = f"loss/train_epoch",
+                value     = loss,
+                prog_bar  = False,
+                on_step   = False,
+                on_epoch  = True,
+                sync_dist = True,
+            )
+            self.tb_log_scalar(f"loss/train_epoch", loss, "epoch")
         # Metrics
         if self.train_metrics:
             for i, metric in enumerate(self.train_metrics):
                 value = metric.compute()
-                self.ckpt_log_scalar(f"checkpoint/{metric.name}/train_epoch", value)
-                self.tb_log_scalar(f"{metric.name}/train_epoch", value, "epoch")
                 metric.reset()
-    
+                if self.trainer.is_global_zero:
+                    self.log(
+                        name      = f"{metric.name}/train_epoch",
+                        value     = value,
+                        prog_bar  = False,
+                        on_step   = False,
+                        on_epoch  = True,
+                        sync_dist = True,
+                    )
+                    self.tb_log_scalar(f"{metric.name}/train_epoch", value, "epoch")
+        """
+
     def on_validation_epoch_start(self):
         """Called in the validation loop at the beginning of the epoch."""
         self.epoch_step = 0
-
+    
     def validation_step(
         self,
-        batch         : Any,
-        batch_idx     : int,
-        dataloader_idx: int,
+        batch    : Any,
+        batch_idx: int,
         *args, **kwargs
     ) -> StepOutput | None:
         """Operates on a single batch of data from the validation set. In this
@@ -1174,9 +1174,7 @@ class Model(lightning.LightningModule, ABC):
         Args:
             batch: The output of :class:`~torch.utils.data.DataLoader`.
             batch_idx: The index of this batch.
-            dataloader_idx: The index of the dataloader that produced this batch.
-                (only if multiple val dataloaders used).
-        
+
         Return:
             - Any object or value.
             - None, validation will skip to the next batch.
@@ -1187,49 +1185,34 @@ class Model(lightning.LightningModule, ABC):
             target = target,
             *args, **kwargs
         )
-        return {
-            "loss"  : loss,
-            "input" : input,
-            "target": target,
-            "pred"  : pred
-        }
-    
-    def validation_step_end(
-        self,
-        step_output: StepOutput,
-        *args, **kwargs
-    ) -> StepOutput | None:
-        """Use this when validating with dp because :meth:`validation_step` will
-        operate on only part of the batch. However, this is still optional and
-        only needed for things like softmax or NCE loss.
-
-        Note:
-            If you later switch to ddp or some other mode, this will still be
-            called so that you don't have to change your code.
-        
-        Return:
-            None or anything
-        """
-        if not isinstance(step_output,  dict):
-            return None
-        
-        # Gather results
-        # For DDP strategy, gather outputs from multiple devices.
-        if self.trainer.num_devices > 1:
-            step_output = self.all_gather(step_output)
-        
-        loss   = step_output["loss"]  # losses from each device
-        input  = step_output["input"]  # images from each device
-        target = step_output["target"]  # ground-truths from each device
-        pred   = step_output["pred"]  # predictions from each device
-        
-        # Tensors
-        if self.trainer.num_devices > 1:
-            input  = input.flatten(start_dim=0, end_dim=1)
-            target = target.flatten(start_dim=0, end_dim=1)
-            pred   = pred.flatten(start_dim=0, end_dim=1)
-        
-        # Debugging
+        # Loss
+        self.log(
+            name           = f"val/loss",
+            value          = loss,
+            prog_bar       = False,
+            logger         = True,
+            on_step        = True,
+            on_epoch       = True,
+            sync_dist      = True,
+            rank_zero_only = True,
+            batch_size     = 1,
+        )
+        # Metric
+        if self.val_metrics:
+            for i, metric in enumerate(self.train_metrics):
+                value = metric(pred, target)
+                self.log(
+                    name           = f"val/{metric.name}",
+                    value          = value,
+                    prog_bar       = False,
+                    logger         = True,
+                    on_step        = True,
+                    on_epoch       = True,
+                    sync_dist      = True,
+                    rank_zero_only = True,
+                    batch_size     = 1,
+                )
+        # Debug
         epoch = self.current_epoch + 1
         if self.debug \
             and epoch % self.debug["every_n_epochs"] == 0 \
@@ -1245,66 +1228,27 @@ class Model(lightning.LightningModule, ABC):
                         "nrow" : input[0],
                     }
                 )
-        
-        # Loss
-        loss = loss.mean() if loss is not None else None
-        self.ckpt_log_scalar(f"checkpoint/loss/val_step", loss)
-        # self.tb_log(f"{loss_tag}", loss, "step")
-        
-        # Metrics
-        if self.val_metrics:
-            for i, metric in enumerate(self.val_metrics):
-                value = metric(pred, target)
-                self.ckpt_log_scalar(f"checkpoint/{metric.name}/val_step", value)
-                # self.tb_log(f"{metric.name}/val_step", value, "step")
-        
         self.epoch_step += 1
-        return {
-            "loss": loss,
-            # "input" : input,
-            # "target": target,
-            # "pred"  : pred,
-        }
-    
-    def validation_epoch_end(self, outputs: EpochOutput | list[EpochOutput]):
-        """Called at the end of the validation epoch with the outputs of all
-        validation steps.
-        
-        Args:
-            outputs: A list of outputs you defined in :meth:`validation_step`,
-                or if there are multiple dataloaders, a list containing a list
-                of outputs for each dataloader.
-        
-        Return:
-             None.
-        """
-        # Loss
-        loss = torch.stack([x["loss"] for x in outputs]).mean()
-        self.ckpt_log_scalar(f"checkpoint/loss/val_epoch", loss)
-        self.tb_log_scalar(f"loss/val_epoch", loss, "epoch")
-        
-        # Metrics
-        if self.val_metrics:
-            for i, metric in enumerate(self.val_metrics):
-                value = metric.compute()
-                self.ckpt_log_scalar(f"checkpoint/{metric.name}/val_epoch", value)
-                self.tb_log_scalar(f"{metric.name}/val_epoch", value, "epoch")
-                metric.reset()
-    
+        return loss
+
+    def on_validation_epoch_end(self):
+        """Called in the validation loop at the very end of the epoch."""
+        for i, metric in enumerate(self.val_metrics):
+            # value = metric.compute()
+            metric.reset()
+
     def on_test_start(self) -> None:
         """Called at the very beginning of testing."""
-        for path in [self.root, self.ckpt_dir, self.debug_dir]:
-            path.mkdir(parents=True, exist_ok=True)
-        
+        self.create_dir()
+    
     def on_test_epoch_start(self):
         """Called in the test loop at the very beginning of the epoch."""
         self.epoch_step = 0
     
     def test_step(
         self,
-        batch        : Any,
-        batch_idx    : int,
-        dataloader_id: int,
+        batch    : Any,
+        batch_idx: int,
         *args, **kwargs
     ) -> StepOutput | None:
         """Operates on a single batch of data from the test set. In this step
@@ -1314,8 +1258,6 @@ class Model(lightning.LightningModule, ABC):
         Args:
             batch: The output of your :class:`~torch.utils.data.DataLoader`.
             batch_idx: The index of this batch.
-            dataloader_id: The index of the dataloader that produced this batch.
-                (only if multiple test dataloaders used).
 
         Return:
             Any of:
@@ -1328,57 +1270,38 @@ class Model(lightning.LightningModule, ABC):
             target = target,
             *args, **kwargs
         )
-        return {
-            "loss"  : loss,
-            "input" : input,
-            "target": target,
-            "pred"  : pred
-        }
-    
-    def test_step_end(
-        self,
-        step_output: StepOutput,
-        *args, **kwargs
-    ) -> StepOutput | None:
-        """Use this when testing with DP because :meth:`test_step` will operate
-        on only part of the batch. However, this is still optional and only
-        needed for things like softmax or NCE loss.
-
-        Note:
-            If you later switch to ddp or some other mode, this will still be
-            called so that you don't have to change your code.
-        
-        Args:
-            step_output: What you return in :meth:`test_step` for each batch
-            part.
-            
-        Return:
-            None or anything
-        """
-        if not isinstance(step_output,  dict):
-            return step_output
-        
-        # Gather results
-        # For DDP strategy, gather outputs from multiple devices.
-        if self.trainer.num_devices > 1:
-            step_output = self.all_gather(step_output)
-        
-        loss   = step_output["loss"]    # losses from each GPU
-        input  = step_output["input"]   # images from each GPU
-        target = step_output["target"]  # ground-truths from each GPU
-        pred   = step_output["pred"]    # predictions from each GPU
-        
-        # Tensors
-        if self.trainer.num_devices > 1:
-            input  = input.flatten(start_dim=0, end_dim=1)
-            target = target.flatten(start_dim=0, end_dim=1)
-            pred   = pred.flatten(start_dim=0, end_dim=1)
-        
-        # Debugging
+        # Loss
+        self.log(
+            name           = f"test/loss",
+            value          = loss,
+            prog_bar       = False,
+            logger         = True,
+            on_step        = True,
+            on_epoch       = True,
+            sync_dist      = True,
+            rank_zero_only = True,
+            batch_size     = 1,
+        )
+        # Metric
+        if self.val_metrics:
+            for i, metric in enumerate(self.train_metrics):
+                value = metric(pred, target)
+                self.log(
+                    name           = f"test/{metric.name}",
+                    value          = value,
+                    prog_bar       = False,
+                    logger         = True,
+                    on_step        = True,
+                    on_epoch       = True,
+                    sync_dist      = True,
+                    rank_zero_only = True,
+                    batch_size     = 1,
+                )
+        # Debug
         epoch = self.current_epoch + 1
-        if self.debug and \
-            epoch % self.debug["every_n_epochs"] == 0 and \
-            self.epoch_step < self.debug["max_n"]:
+        if self.debug \
+            and epoch % self.debug["every_n_epochs"] == 0 \
+            and self.epoch_step < self.debug["max_n"]:
             if self.trainer.is_global_zero:
                 self.show_results(
                     input    = input,
@@ -1390,47 +1313,14 @@ class Model(lightning.LightningModule, ABC):
                         "nrow" : input[0],
                     }
                 )
-        
-        # Loss
-        loss = loss.mean() if loss is not None else None
-        self.ckpt_log_scalar(f"checkpoint/loss/test_step", loss)
-        # self.tb_log(f"loss/test_step", loss, "step")
-        
-        # Metrics
-        if self.test_metrics:
-            for i, metric in enumerate(self.test_metrics):
-                value = metric(pred, target)
-                self.ckpt_log_scalar(f"checkpoint/{metric.name}/test_step", value)
-                # self.tb_log(f"{metric.name}/test_step", value, "step")
-        
         self.epoch_step += 1
-        return {
-            "loss": loss,
-            # "input" : input,
-            # "target": target,
-            # "pred"  : pred,
-        }
+        return loss
     
-    def test_epoch_end(self, outputs: EpochOutput | list[EpochOutput]):
-        """Called at the end of a test epoch with the output of all test steps.
-        
-        Args:
-            outputs: A list of outputs you defined in :meth:`test_step_end`, or
-                if there are multiple dataloaders, a list containing a list of
-                outputs for each dataloader.
-        """
-        # Loss
-        loss = torch.stack([x["loss"] for x in outputs]).mean()
-        self.ckpt_log_scalar(f"checkpoint/loss/test_epoch", loss)
-        self.tb_log_scalar(f"loss/test_epoch", loss, "epoch")
-        
-        # Metrics
-        if self.test_metrics:
-            for i, metric in enumerate(self.test_metrics):
-                value = metric.compute()
-                self.ckpt_log_scalar(f"checkpoint/{metric.name}/test_epoch", value)
-                self.tb_log_scalar(f"{metric.name}/test_epoch", value, "epoch")
-                metric.reset()
+    def on_test_epoch_end(self):
+        """Called in the test loop at the very end of the epoch."""
+        for i, metric in enumerate(self.test_metrics):
+            # value = metric.compute()
+            metric.reset()
     
     def export_to_onnx(
         self,
@@ -1531,55 +1421,5 @@ class Model(lightning.LightningModule, ABC):
             console.log(f"[red]{self.fullname}")
             rich.print_table(self.info)
             console.log(f"Save indexes: {self.save}")
-    
-    def tb_log_scalar(
-        self,
-        tag : str,
-        data: Any | None,
-        step: str | int = "step"
-    ):
-        """Log scalar values using tensorboard."""
-        if data is None:
-            return
-        if isinstance(step, str):
-            step = self.current_epoch if step == "epoch" else self.global_step
-        if self.trainer.is_global_zero and self.logger is not None:
-            self.logger.experiment.add_scalar(tag, data, step)
-    
-    def tb_log_class_metrics(
-        self,
-        tag : str,
-        data: Any | None,
-        step: str | int = "step"
-    ):
-        """Log class metrics using tensorboard."""
-        if data is None:
-            return
-        if self.classlabels is None:
-            return
-        if isinstance(step, str):
-            step = self.current_epoch if step == "epoch" else self.global_step
-        if self.trainer.is_global_zero and self.logger is not None:
-            for n, a in zip(self.classlabels.names(), data):
-                n = f"{tag}/{n}"
-                self.logger.experiment.add_scalar(n, a, step)
-    
-    def ckpt_log_scalar(
-        self,
-        tag     : str,
-        data    : Any | None,
-        prog_bar: bool = False
-    ):
-        """Log for model checkpointing."""
-        if data is None:
-            return
-        if self.trainer.is_global_zero:
-            self.log(
-                name           = tag,
-                value          = data,
-                prog_bar       = prog_bar,
-                sync_dist      = True,
-                rank_zero_only = True
-            )
 
 # endregion

@@ -19,7 +19,7 @@ import cv2
 import numpy as np
 
 import mon
-from supr import data
+from supr import obj
 
 error_console = mon.error_console
 
@@ -56,8 +56,27 @@ class RegionOfInterest:
             raise ValueError(
                 f"points' number of dimensions must be == 2, but got {points.ndim}."
             )
+        if not len(points) >= 3:
+            raise ValueError(
+                f"Number of points must be >= 3, but got {len(points)}."
+            )
         self._points = points
+        self._bbox   = np.array([
+            np.min(points, axis=0).min(),
+            np.min(points, axis=1).min(),
+            np.max(points, axis=0).max(),
+            np.max(points, axis=1).max()
+        ])
+        self._center = np.mean(self.points, axis=0)
     
+    @property
+    def bbox(self) -> np.ndarray:
+        return self._bbox
+    
+    @property
+    def center(self) -> np.ndarray:
+        return self._center
+        
     @property
     def has_valid_points(self) -> bool:
         """Return True if there are more than 3 points."""
@@ -106,7 +125,18 @@ class RegionOfInterest:
         if isinstance(value, str | mon.Path):
             return cls.from_file(value=value)
         return None
-
+    
+    def calculate_iou(self, bbox: np.ndarray) -> float:
+        """Calculate the IoU.
+        
+        Args:
+            bbox: Bounding boxes in XYXY format.
+            
+        Returns:
+            IoU value.
+        """
+        return mon.get_single_bbox_iou(bbox1=self.bbox, bbox2=bbox)
+    
     def is_box_in_roi(self, bbox: np.ndarray, compute_distance: bool = False) -> int:
         """Check a bounding bbox touches the current ROI.
         
@@ -146,14 +176,22 @@ class RegionOfInterest:
     
     def draw(self, image: np.ndarray) -> np.ndarray:
         """Draw the current ROI on the :param:`image`."""
-        color = mon.BasicRGB.GREEN.value
-        pts = self.points.reshape((-1, 1, 2))
+        color = mon.AppleRGB.GREEN.value
+        pts   = self.points.reshape((-1, 1, 2))
         cv2.polylines(
             img       = image,
             pts       = [pts],
             isClosed  = True,
             color     = color,
-            thickness = 2
+            thickness = 6,
+        )
+        center = self.center.astype(np.int32).reshape(2)
+        cv2.circle(
+            img       = image,
+            center    = center,
+            radius    = 10,
+            color     = color,
+            thickness = - 1,
         )
         return image
 
@@ -184,7 +222,7 @@ def get_roi_for_box(
     return None
 
 
-def assign_detections_to_rois(instances: list[data.Instance], rois: list[ROI]):
+def assign_detections_to_rois(instances: list[obj.Instance], rois: list[ROI]):
     """Assign :class:`data.Detection` objects to ROIs.
 
     Args:
@@ -221,11 +259,11 @@ class MovementOfInterest:
         id_               : int | str,
         points            : np.ndarray,
         shape_type        : str,
-        offset            : int | None    = None,
-        distance_function : str           = "hausdorff",
-        distance_threshold: float         = 300.0,
-        angle_threshold   : float         = 45.0,
-        color             : list[int]     = mon.AppleRGB.WHITE.value,
+        offset            : int | None = None,
+        distance_function : str        = "hausdorff",
+        distance_threshold: float      = 300.0,
+        angle_threshold   : float      = 45.0,
+        color             : list[int]  = mon.AppleRGB.WHITE.value,
     ):
         super().__init__()
         self.id_                = id_
@@ -304,7 +342,7 @@ class MovementOfInterest:
         if isinstance(value, str | mon.Path):
             return cls.from_file(value=value)
         return None
-    
+       
     def calculate_distance_with_track(self, object_track: np.ndarray) -> float:
         """Calculate the distance between an object's track to the MOI's tracks.
         
@@ -490,15 +528,15 @@ def assign_moving_objects_to_mois(
     
     if shape_type == "polygon":
         for o in objects:
-            if o.moi_uid is None:
-                o.moi_uid = get_moi_for_box(
+            if o.moi_id is None:
+                o.moi_id = get_moi_for_box(
                     bbox = o.current_box,
                     mois = polygon_mois
                 )
     elif shape_type == "line":
         for o in objects:
-            if o.moi_uid is None:
-                o.moi_uid = get_best_matched_moi(
+            if o.moi_id is None:
+                o.moi_id = get_best_matched_moi(
                     object_track = o.trajectory,
                     mois         = line_mois
                 )[0]

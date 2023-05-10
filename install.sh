@@ -28,6 +28,7 @@ pip install --upgrade pip
 echo -e "... Done"
 
 # Install 'mon' env
+echo -e "\nInstalling 'mon' environment:"
 case "$OSTYPE" in
   linux*)
     echo -e "\nLinux / WSL"
@@ -42,11 +43,8 @@ case "$OSTYPE" in
       conda env create -f "${env_yml_path}"
       echo -e "... Done"
     fi
-    eval -e "$(conda shell.bash hook)"
-    conda activate mon
-    pip install --upgrade pip
-    # Remove `cv2/plugin` folder
-    rm -rf $CONDA_PREFIX/lib/python3.10/site-packages/cv2/qt/plugins
+    # Install FFMPEG
+    sudo apt-get install ffmpeg
     ;;
   darwin*)
     echo -e "\nMacOS"
@@ -64,11 +62,8 @@ case "$OSTYPE" in
       conda env create -f "${env_yml_path}"
       echo -e "... Done"
     fi
-    eval "$(conda shell.bash hook)"
-    conda activate mon
-    pip install --upgrade pip
-    # Remove `cv2/plugin` folder:
-    rm -rf $CONDA_PREFIX/lib/python3.10/site-packages/cv2/qt/plugins
+    # Install FFMPEG
+    brew install ffmpeg
     ;;
   win*)
     echo -e "\nWindows"
@@ -83,11 +78,6 @@ case "$OSTYPE" in
       conda env create -f "${env_yml_path}"
       echo -e "... Done"
     fi
-    eval "$(conda shell.bash hook)"
-    conda activate mon
-    pip install --upgrade pip
-    # Remove `cv2/plugin` folder:
-    rm -rf $CONDA_PREFIX/lib/python3.10/site-packages/cv2/qt/plugins
     ;;
   msys*)
     echo -e "\nMSYS / MinGW / Git Bash"
@@ -106,13 +96,16 @@ case "$OSTYPE" in
     ;;
 esac
 
-# Install/upgrade 'mon' package
+rm -rf poetry.lock
+rm -rf $CONDA_PREFIX/lib/python3.10/site-packages/cv2/qt/plugins
 eval "$(conda shell.bash hook)"
 conda activate mon
+pip install --upgrade pip
 poetry install --with dev
 pip install -U openmim
 mim install mmcv-full==1.7.0
-pip install --force-reinstall --no-cache -U opencv-python==4.5.5.62
+conda update --a  --y
+conda clean --a --y
 
 # Set environment variables
 # shellcheck disable=SC2162
@@ -126,7 +119,7 @@ read -e -i "$data_dir" -p "Enter DATA_DIR=" input
 data_dir="${input:-$data_dir}"
 if [ "$data_dir" != "" ]; then
   export DATA_DIR="$data_dir"
-  mamba env config vars set data_dir="$data_dir"
+  conda env config vars set data_dir="$data_dir"
   echo -e "\nDATA_DIR has been set to $data_dir."
 else
   echo -e "\nDATA_DIR has NOT been set."
@@ -138,11 +131,7 @@ fi
 echo -e "... Done"
 
 # Setup Resilio Sync
-echo -e "\nSetting Resilio Sync"
 rsync_dir="${root_dir}/.sync"
 mkdir -p "${rsync_dir}"
 cp "IgnoreList" "${rsync_dir}/IgnoreList"
 echo -e "... Done"
-
-# Cleanup everything
-conda clean --a --y

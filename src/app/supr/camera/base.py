@@ -94,6 +94,7 @@ class Camera(ABC):
     
     @image_loader.setter
     def image_loader(self, image_loader: Any):
+        """Define an image loader object."""
         if isinstance(image_loader, mon.vision.Loader):
             self._image_loader = image_loader
         elif isinstance(image_loader, dict):
@@ -120,6 +121,7 @@ class Camera(ABC):
     
     @image_writer.setter
     def image_writer(self, image_writer: Any):
+        """Define an image writer object."""
         if not (self.save_image or self.save_video):
             self._image_writer = None
         elif isinstance(image_writer, mon.vision.Writer):
@@ -137,6 +139,7 @@ class Camera(ABC):
                         f"{destination}."
                     )
                 image_writer["destination"] = destination
+                image_writer["frame_rate"]  = getattr(self.image_loader, "fps", image_writer["frame_rate"])
                 self._image_writer = mon.VideoWriterCV(**image_writer)
         else:
             raise ValueError(
@@ -154,7 +157,7 @@ class Camera(ABC):
         pass
     
     @abstractmethod
-    def run_step_end(self, image: np.ndarray):
+    def run_step_end(self, index: int, image: np.ndarray):
         """Perform some postprocessing operations when a run step end."""
         pass
     
@@ -164,10 +167,16 @@ class Camera(ABC):
         pass
 
     @abstractmethod
-    def draw(self, image: np.ndarray, elapsed_time: float) -> np.ndarray:
+    def draw(
+        self,
+        index       : int,
+        image       : np.ndarray,
+        elapsed_time: float
+    ) -> np.ndarray:
         """Visualize the results on the image.
 
         Args:
+            index: Current frame index.
             image: Image to be drawn.
             elapsed_time: Elapsed time per iteration.
         """

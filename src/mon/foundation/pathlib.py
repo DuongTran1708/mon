@@ -82,6 +82,12 @@ class Path(type(pathlib.Path())):
         """
         return self == self.stem
     
+    def is_py_file(self, exist: bool = True) -> bool:
+        """Return True if the current path is a python file. Otherwise, return
+        False.
+        """
+        return (self.is_file() if exist else True) and self.suffix.lower() in [".py"]
+    
     def is_stem(self) -> bool:
         """Return True if the current path isn't None, and the parent of the
         path is the current directory, and the path has no extension. Otherwise,
@@ -273,8 +279,8 @@ def copy_file(src: Path | str, dst: Path | str):
         src: The path to the original file.
         dst: The destination path.
     """
-    src = Path(src)
-    src.copy_to(dst=dst)
+    Path(dst).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src=str(src), dst=str(dst))
 
 
 # endregion

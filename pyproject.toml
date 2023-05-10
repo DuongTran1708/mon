@@ -9,7 +9,7 @@
 #
 [tool.poetry]
 name          = "mon"
-version       = "1.2.1"
+version       = "1.2.3"
 description   = "MON covers a wide range of research topics in computer vision, machine learning, and deep learning."
 license       = "MIT"
 authors       = [
@@ -109,21 +109,18 @@ python                = ">=3.10, <3.12"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+addict         = "*"
+cog            = "*"
 easydict       = "*"
 hydra-core     = "*"
 kornia         = "=0.5.0"
 mediapipe      = "*"
-mmcv-full      = "=1.7.1"
-openmim        = "*"
-packaging      = "*"
 pandas         = "*"
-saicinpainting = {path="src/lib/lama"  }
-tabulate       = "*"
 tensorflow     = "*"
-thop           = "*"
 torchfile      = "*"
-ultralytics    = {path="src/lib/yolov8"}
 webdataset     = "*"
+saicinpainting = {path="src/lib/lama"  , develop=true}
+ultralytics    = {path="src/lib/yolov8", develop=true}
 
 [build-system]
 requires      = ["poetry-core>=1.2.0"]

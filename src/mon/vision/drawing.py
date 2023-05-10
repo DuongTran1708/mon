@@ -6,10 +6,7 @@
 from __future__ import annotations
 
 __all__ = [
-    "draw_bbox",
-    "draw_contour",
-    "draw_segment",
-    "draw_trajectory",
+    "draw_bbox", "draw_contour", "draw_segment", "draw_trajectory",
 ]
 
 import cv2
@@ -298,8 +295,7 @@ def draw_trajectory(
             )
         trajectory = np.array(trajectory)
     trajectory = np.array(trajectory).reshape((-1, 1, 2)).astype(int)
-    
-    color = color or [255, 255, 255]
+    color      = color or [255, 255, 255]
     cv2.polylines(
         img       = drawing,
         pts       = [trajectory],

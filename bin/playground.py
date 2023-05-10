@@ -14,13 +14,23 @@ import mon
 
 t = timeit.Timer("import mon")
 print(t.timeit(number=1000000))
-print(mon.ZOO_DIR)
 
-image      = cv2.imread("lenna.png")
-bbox       = np.array([20, 20, 100, 100])
-trajectory = [[20, 20], [30, 30], [140, 40], [50, 150]]
-drawing    = mon.draw_bbox(image, bbox, label="Text", color=[0, 255, 0], fill=True)
-drawing    = mon.draw_contour(drawing, trajectory, color=[0, 0, 255])
-drawing    = mon.draw_trajectory(drawing, trajectory, color=[0, 0, 255])
-cv2.imshow("Image", drawing)
+image       = cv2.imread("lenna.png")
+gray        = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# Define the HOG descriptor parameters
+winSize     = (64, 128)
+blockSize   = (16, 16)
+blockStride = (8, 8)
+cellSize    = (8, 8)
+nbins       = 9
+# Create a HOG descriptor object
+hog = cv2.HOGDescriptor(winSize, blockSize, blockStride, cellSize, nbins)
+# Compute the HOG features of the image
+features = hog.compute(gray)
+
+# Print the size of the feature vector
+print("Feature vector size:", features.shape, type(features))
+print(features)
+
+cv2.imshow("Image", image)
 cv2.waitKey(0)

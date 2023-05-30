@@ -1,0 +1,73 @@
+---
+dataset: &dataset "aic22_trafficsafety"
+# Dataset name. It is also the name of the directory inside `data_dir`.
+name: &camera_name "traffic_safety"
+# Camera name is also used as the unique ID (NO FILE EXTENSION).
+id_: *camera_name
+# Camera's unique ID.
+
+data:
+  type: "*.mp4"
+  # Video file or image folder. By default, assume all video are put inside
+  # `aic21_vehicle_counting/<subset>/`.
+  stream: null
+  # If we run directly with the input stream, `stream` must be of some value.
+  # By default `null` means run with video file defined in `path`.
+  shape: &shape [960, 1280, 3]
+  # Input size as [H, W, C].
+  frame_rate: &frame_rate 10
+  # Frame rate of the video.
+  batch_size: &batch_size 16
+  # Number of samples in one forward & backward pass.
+
+data_loader:
+  data: "videos"
+  # Data source. Can be a path to an image file, a directory, a video, or
+  # a stream. It can also be a pathname pattern to images.
+  batch_size: *batch_size
+  # Number of samples in one forward & backward pass.
+
+class_labels:
+  file: "class_labels_s1.json"
+  # Config file containing class_labels.
+
+detector:
+  name: "yolov8_trafficsafety"
+  # Name of the detector model.
+  model_cfg:
+  # Detector model config.
+    cfg: "yolov8x6.yaml"
+    # YOLOv5 variances.
+    nc: 80
+    # Number of classes.
+  weights: "models_zoo/yolov8/yolov8x6_1280_7cls_nonfiltered/weights/best.pt"
+  # Pretrained weights file.
+  shape: [1280, 1280, 3]
+  # Input size as [C, H, W].
+  min_confidence: 0.0001
+  # Detection confidence threshold. Disregard all detections that have a
+  # confidence lower than this value.
+  nms_max_overlap: 0.35
+  # Maximum detection overlap (non-maxima suppression threshold).
+  device: &device "0"
+  # CUDDevice, i.e. 0 or 0,1,2,3 or cpu
+  batch_size: *batch_size
+  # Number of samples in one forward & backward pass.
+  folder_out: "yolov8x6"
+  # The output folder
+
+data_writer:
+  dst: "outputs"
+  # Output video file or a directory.
+  shape: *shape
+  # Output size [H, W, C].
+  frame_rate: *frame_rate
+  # Frame rate of the video.
+  fourcc: "mp4v"
+  # Video codec. One of: ["mp4v", "xvid", "mjpg", "wmv1"].
+  dst_crop_pkl: "dets_crop_pkl"
+  # Store the crop detection of each result of each images
+  dst_debug: "dets_debug"
+  # Store the full detection of each result of each images
+
+...

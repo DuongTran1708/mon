@@ -12,7 +12,7 @@ copyright: Copyright &copy; 2021 - 2023 Long H. Pham
 
 theme:
   name: "material"
-  favicon: asset/one-40.png
+  favicon: asset/cat-40.png
   features:
     - announce.dismiss
     - header.autohide
@@ -34,7 +34,7 @@ theme:
   icon:
     repo: fontawesome/brands/github
   language: en
-  logo: asset/one-80.png
+  logo: asset/cat-80.png
   palette:
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
@@ -110,20 +110,35 @@ markdown_extensions:
 nav:
   - Home: index.md
   - "Get Started":
-      - "Installation": get-started/installation.md
-  - "Explanation":
-      - explanation/index.md
-      - "BaseModel": explanation/base-model.md
+      - "Quick Glance": get-started/quick-glance.md
   - "Tutorials":
       - tutorial/index.md
-  - "How-To":
+  - "How-To Guides":
       - how-to/index.md
+      - "Dev Guideline": how-to/dev-guidelines.md
+  - "API Explanation":
+      - explanation/index.md
+      - "mon":
+          - explanation/mon/index.md
+          - "foundation":
+              - explanation/mon/foundation/index.md
+          - "coreml":
+              - explanation/mon/coreml/index.md
+          - "createml":
+              - explanation/mon/createml/index.md
+          - "vision":
+              - explanation/mon/vision/index.md
+      - "app":
+          - explanation/app/index.md
+      - "lib":
+          - explanation/lib/index.md
   - "Reference":
       - reference/index.md
 
 plugins:
   - mkdocstrings
   - search
+  - autorefs
   # - social
 
 repo_url: https://github.com/phlong3105/mon

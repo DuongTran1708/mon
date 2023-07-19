@@ -5,8 +5,12 @@ path : ../mon/data/aic23-autocheckout/
 train: [
   train/testA-01/images/,
   train/testA-02/images/,
-] 
-val  : val/images/
+]
+# val  : val/images/
+val  : [
+  train/testA-01/images/,
+  train/testA-02/images/,
+]
 test : val/images/
 
 # number of classes

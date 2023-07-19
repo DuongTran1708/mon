@@ -3,11 +3,13 @@
 # Usage:
 # chmod +x install.sh
 # conda init bash
-# ./install.sh
-#
-# or:
 # bash -l install.sh
 # zsh -i install.sh
+
+echo "$HOSTNAME"
+
+machine="desktop"
+read -e -i "$machine" -p "Task [desktop, server]: " machine
 
 script_path=$(readlink -f "$0")
 current_dir=$(dirname "$script_path")
@@ -23,6 +25,7 @@ echo -e "... Done"
 # Update 'base' env
 echo -e "\nUpdating 'base' environment:"
 conda init bash
+conda update -n base -c defaults conda --y
 conda update --a --y
 pip install --upgrade pip
 echo -e "... Done"
@@ -33,7 +36,11 @@ case "$OSTYPE" in
   linux*)
     echo -e "\nLinux / WSL"
     # Create `mon` env
-    env_yml_path="${current_dir}/linux.yaml"
+    if [ "$machine" == "server" ]; then
+          env_yml_path="${current_dir}/server.yaml"
+        else
+          env_yml_path="${current_dir}/linux.yaml"
+        fi
     if { conda env list | grep 'mon'; } >/dev/null 2>&1; then
       echo -e "\nUpdating 'mon' environment:"
       conda env update --name mon -f "${env_yml_path}"
@@ -96,15 +103,17 @@ case "$OSTYPE" in
     ;;
 esac
 
+echo -e "\nInstall third-party library"
 rm -rf poetry.lock
 rm -rf $CONDA_PREFIX/lib/python3.10/site-packages/cv2/qt/plugins
 eval "$(conda shell.bash hook)"
 conda activate mon
-pip install --upgrade pip
-poetry install --with dev
-pip install -U openmim
-mim install mmcv-full==1.7.0
-conda update --a  --y
+poetry install --extras "dev"
+# poetry install --with dev
+# pip install -U openmim
+# mim install mmcv-full==1.7.0
+conda install cudatoolkit=11.8 --y
+conda update --a --y
 conda clean --a --y
 
 # Set environment variables
